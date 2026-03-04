@@ -1,0 +1,90 @@
+{
+  "projectType": "framework",
+  "projectName": "AdonisJS Scheduler",
+  "projectDescription": "A powerful task scheduler package for AdonisJS applications with cron-based scheduling and decorator support",
+  "theme": "mint",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "installation",
+          "quickstart"
+        ]
+      },
+      {
+        "group": "Core Concepts",
+        "pages": [
+          "concepts/defining-schedules",
+          "concepts/schedule-frequencies",
+          "concepts/decorator-scheduling",
+          "concepts/overlapping-prevention",
+          "concepts/tags-and-filtering"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/running-scheduler",
+          "guides/lifecycle-hooks",
+          "guides/timezones",
+          "guides/manual-worker"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "api/scheduler",
+          "api/schedule-methods",
+          "api/worker",
+          "api/commands"
+        ]
+      },
+      {
+        "group": "Advanced",
+        "pages": [
+          "advanced/configuration",
+          "advanced/troubleshooting"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Cron-based task scheduling with intuitive frequency methods",
+    "Decorator-based scheduling on AdonisJS commands",
+    "Prevent overlapping task executions with built-in locking",
+    "Tag-based schedule filtering and organization",
+    "Timezone support for international deployments",
+    "Hot-reloading during development with --watch flag",
+    "Lifecycle hooks for before/after task execution",
+    "CLI commands for running and listing scheduled tasks"
+  ],
+  "publicApiSurface": [
+    "scheduler.command(name, args)",
+    "scheduler.call(callback)",
+    "scheduler.withoutOverlapping(callback, config)",
+    "scheduler.withTag(callback, tag)",
+    "@schedule(expression, args)",
+    "Worker.start()",
+    "Worker.stop()",
+    "node ace scheduler:run",
+    "node ace scheduler:work",
+    "node ace scheduler:list",
+    ".everyMinute()",
+    ".everyFiveMinutes()",
+    ".hourly()",
+    ".daily()",
+    ".weekly()",
+    ".cron(expression)",
+    ".withoutOverlapping()",
+    ".timezone(timezone)",
+    ".tag(tag)",
+    ".immediate()",
+    ".before(callback)",
+    ".after(callback)"
+  ]
+}
