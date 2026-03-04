@@ -1,0 +1,399 @@
+---
+title: Advanced Configuration
+description: Advanced configuration options for AdonisJS Scheduler
+---
+
+This guide covers advanced configuration patterns for AdonisJS Scheduler, including provider setup, environment-based configuration, and custom worker configuration.
+
+## Provider Configuration
+
+The scheduler is registered as a provider in your AdonisJS application. During installation, the provider is automatically configured in your `adonisrc.ts` file.
+
+### Provider Registration
+
+The scheduler provider is registered for console environments:
+
+```typescript title="adonisrc.ts"
+{
+  providers: [
+    // ... other providers
+    () => import('adonisjs-scheduler/scheduler_provider'),
+  ],
+  preloads: [
+    () => import('#start/scheduler'),
+  ],
+  commands: [
+    () => import('adonisjs-scheduler/commands'),
+  ],
+}
+```
+
+<Note>
+The provider only loads in console environments (when running Ace commands), ensuring it doesn't impact your HTTP server performance.
+</Note>
+
+### Environment-Specific Provider Loading
+
+You can conditionally load the provider based on your environment:
+
+```typescript title="adonisrc.ts"
+{
+  providers: [
+    {
+      file: () => import('adonisjs-scheduler/scheduler_provider'),
+      environment: ['console'],
+    },
+  ],
+}
+```
+
+## Preload File Configuration
+
+The scheduler is configured in the `start/scheduler.ts` preload file, which is automatically created during installation.
+
+### Basic Preload Setup
+
+```typescript title="start/scheduler.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+
+// Define your schedules
+scheduler
+  .call(() => {
+    console.log('Running scheduled task')
+  })
+  .everyMinute()
+```
+
+### Multiple Preload Files
+
+For larger applications, you can organize schedules into multiple files:
+
+```typescript title="start/scheduler.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+import './schedules/database_maintenance.js'
+import './schedules/email_notifications.js'
+import './schedules/report_generation.js'
+```
+
+```typescript title="start/schedules/database_maintenance.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler
+  .call(async () => {
+    // Clean up old records
+  })
+  .daily()
+  .tag('maintenance')
+```
+
+## Advanced Scheduler Configuration
+
+### Global Lifecycle Hooks
+
+Configure global hooks that run for all scheduled tasks:
+
+```typescript title="start/scheduler.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+// Hook that runs before scheduler boots
+scheduler.onBoot(async () => {
+  logger.info('Scheduler is booting...')
+  // Initialize connections, load resources, etc.
+})
+
+// Hook that runs before each task execution starts
+scheduler.onStarting(async ({ tag }) => {
+  logger.info(`Starting tasks with tag: ${tag}`)
+})
+
+// Hook that runs after scheduler is fully started
+scheduler.onStarted(async ({ tag }) => {
+  logger.info(`Scheduler started successfully for tag: ${tag}`)
+})
+```
+
+### Timezone Configuration
+
+Configure default timezone for all schedules:
+
+```typescript title="start/scheduler.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+import env from '#start/env'
+
+const appTimezone = env.get('APP_TIMEZONE', 'UTC')
+
+scheduler
+  .call(() => {
+    // This task runs in the application's timezone
+  })
+  .daily()
+  .timezone(appTimezone)
+```
+
+### Tag-Based Organization
+
+Organize schedules into logical groups using tags:
+
+```typescript title="start/scheduler.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+
+// Group multiple schedules with the same tag
+scheduler.withTag(() => {
+  scheduler.call(() => {
+    // Cleanup task
+  }).daily()
+  
+  scheduler.call(() => {
+    // Archive task
+  }).weekly()
+}, 'maintenance')
+
+// Or set tags individually
+scheduler
+  .call(() => {
+    // Email task
+  })
+  .hourly()
+  .tag('notifications')
+```
+
+### Overlap Prevention Configuration
+
+Prevent task overlapping globally or per schedule:
+
+```typescript title="start/scheduler.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+
+// Global overlap prevention for multiple tasks
+scheduler.withoutOverlapping(() => {
+  scheduler.call(() => {
+    // Long-running task 1
+  }).everyFiveMinutes()
+  
+  scheduler.call(() => {
+    // Long-running task 2
+  }).everyTenMinutes()
+}, { expiresAt: 5 * 60 * 1000 }) // 5 minutes
+
+// Or configure per schedule
+scheduler
+  .call(() => {
+    // Long-running task
+  })
+  .everyMinute()
+  .withoutOverlapping(10 * 60 * 1000) // 10 minutes
+```
+
+<Info>
+The `expiresAt` value is in milliseconds. It determines how long the lock is held. Default is 3600000ms (1 hour).
+</Info>
+
+## Worker Configuration
+
+### Custom Worker Instance
+
+For advanced use cases, you can manually instantiate and configure the worker:
+
+```typescript title="start/scheduler_worker.ts"
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+import logger from '@adonisjs/core/services/logger'
+
+const worker = new Worker(app)
+
+// Boot the worker
+await worker.boot()
+
+// Start with specific tag
+await worker.start('production')
+
+// Later, stop the worker gracefully
+process.on('SIGTERM', async () => {
+  logger.info('Stopping scheduler worker...')
+  await worker.stop()
+  process.exit(0)
+})
+```
+
+### Multiple Worker Instances
+
+Run multiple scheduler workers with different tags:
+
+```typescript
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+
+// Worker for critical tasks
+const criticalWorker = new Worker(app)
+await criticalWorker.start('critical')
+
+// Worker for background tasks
+const backgroundWorker = new Worker(app)
+await backgroundWorker.start('background')
+```
+
+<Warning>
+When running multiple workers, ensure each worker handles a unique set of tags to avoid duplicate task execution.
+</Warning>
+
+## Container Bindings
+
+The scheduler is bound to the IoC container and can be injected:
+
+```typescript
+import { inject } from '@adonisjs/core'
+import { Scheduler } from 'adonisjs-scheduler'
+
+@inject()
+export class SomeService {
+  constructor(protected scheduler: Scheduler) {}
+  
+  async registerDynamicSchedule() {
+    this.scheduler
+      .call(() => {
+        // Dynamic task
+      })
+      .everyMinute()
+  }
+}
+```
+
+Or resolve it from the container:
+
+```typescript
+import app from '@adonisjs/core/services/app'
+
+const scheduler = await app.container.make('scheduler')
+await scheduler.boot()
+```
+
+## Environment Variables
+
+Configure scheduler behavior using environment variables:
+
+```bash title=".env"
+# Application timezone (affects all schedules by default)
+APP_TIMEZONE=America/New_York
+
+# Custom environment flag
+SCHEDULER_ENABLED=true
+
+# Tag to run (useful for multi-server setups)
+SCHEDULER_TAG=production
+```
+
+Use them in your configuration:
+
+```typescript title="start/scheduler.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+import env from '#start/env'
+
+// Only register schedules if enabled
+if (env.get('SCHEDULER_ENABLED') === 'true') {
+  scheduler
+    .call(() => {
+      // Task
+    })
+    .everyMinute()
+    .timezone(env.get('APP_TIMEZONE', 'UTC'))
+}
+```
+
+## Conditional Schedule Registration
+
+Register schedules based on application state or configuration:
+
+```typescript title="start/scheduler.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+import app from '@adonisjs/core/services/app'
+
+// Only in production
+if (app.inProduction) {
+  scheduler
+    .call(() => {
+      // Production-only task
+    })
+    .daily()
+}
+
+// Only in development
+if (!app.inProduction) {
+  scheduler
+    .call(() => {
+      // Development-only task
+    })
+    .everyMinute()
+}
+```
+
+## Commands Configuration
+
+The scheduler provides commands that are automatically registered:
+
+- `scheduler:run` - Start the scheduler worker
+- `scheduler:list` - List all registered schedules
+
+### Command Options
+
+The `scheduler:run` command supports several options:
+
+```bash
+# Run with custom tag
+node ace scheduler:run --tag=critical
+
+# Run with file watching (development)
+node ace scheduler:run --watch
+```
+
+The `scheduler:list` command can filter by tag:
+
+```bash
+# List all schedules
+node ace scheduler:list
+
+# List schedules with specific tag
+node ace scheduler:list --tag=maintenance
+```
+
+## Production Considerations
+
+### Process Management
+
+In production, use a process manager to keep the scheduler running:
+
+```yaml title="ecosystem.config.cjs"
+module.exports = {
+  apps: [
+    {
+      name: 'scheduler',
+      script: 'node',
+      args: 'ace scheduler:run',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+    },
+  ],
+}
+```
+
+### Graceful Shutdown
+
+The scheduler handles termination signals gracefully, stopping all scheduled tasks before exiting.
+
+```typescript
+// The scheduler automatically handles SIGTERM and SIGINT
+// All running tasks are stopped before the process exits
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Troubleshooting" icon="triangle-exclamation" href="/advanced/troubleshooting">
+    Common issues and debugging tips
+  </Card>
+  <Card title="Lifecycle Hooks" icon="arrows-rotate" href="/guides/lifecycle-hooks">
+    Learn about task lifecycle hooks
+  </Card>
+</CardGroup>

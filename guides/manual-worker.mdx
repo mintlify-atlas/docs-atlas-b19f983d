@@ -1,0 +1,300 @@
+---
+title: Manual worker
+description: Initialize and control the scheduler worker programmatically
+---
+
+Besides using the `scheduler:run` command, you can manually initialize and control the scheduler worker in your code. This approach is useful when you need fine-grained control over the scheduler lifecycle or want to embed the scheduler in a custom application.
+
+## Using the Worker class
+
+The `Worker` class allows you to programmatically start and stop the scheduler:
+
+```ts
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+
+const worker = new Worker(app)
+
+app.terminating(async () => {
+  await worker.stop()
+})
+
+await worker.start()
+```
+
+This gives you direct control over when the scheduler starts and stops, without relying on the CLI command.
+
+## When to use this approach
+
+Consider using the manual worker approach when:
+
+### Embedding in a web server
+
+You want to run the scheduler alongside your HTTP server in the same process:
+
+```ts
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+
+// Start the scheduler
+const worker = new Worker(app)
+await worker.start()
+
+// Graceful shutdown
+app.terminating(async () => {
+  await worker.stop()
+})
+```
+
+### Custom initialization logic
+
+You need to perform custom setup before starting the scheduler:
+
+```ts
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+import redis from '@adonisjs/redis/services/main'
+
+// Perform health checks
+await redis.ping()
+
+// Initialize worker
+const worker = new Worker(app)
+await worker.start()
+```
+
+### Running multiple workers
+
+You want to run multiple scheduler workers with different tags in the same process:
+
+```ts
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+
+const reportsWorker = new Worker(app)
+const maintenanceWorker = new Worker(app)
+
+await reportsWorker.start('reports')
+await maintenanceWorker.start('maintenance')
+
+app.terminating(async () => {
+  await Promise.all([
+    reportsWorker.stop(),
+    maintenanceWorker.stop(),
+  ])
+})
+```
+
+### Testing
+
+You need to control the scheduler lifecycle during testing:
+
+```ts
+import { test } from '@japa/runner'
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+
+test.group('Scheduler', (group) => {
+  let worker: Worker
+
+  group.setup(async () => {
+    worker = new Worker(app)
+    await worker.start()
+  })
+
+  group.teardown(async () => {
+    await worker.stop()
+  })
+
+  test('executes scheduled tasks', async () => {
+    // Test logic
+  })
+})
+```
+
+## Configuration for manual worker
+
+When using the manual worker approach, you need to configure your `adonisrc.ts` to load the scheduler provider in the appropriate environments.
+
+### Include specific environments
+
+Specify which environments should load the scheduler:
+
+```ts
+import { defineConfig } from '@adonisjs/core/app'
+
+export default defineConfig({
+  providers: [
+    {
+      file: () => import('adonisjs-scheduler/scheduler_provider'),
+      environment: ['console', 'web'],
+    },
+  ],
+})
+```
+
+This configuration loads the scheduler in both:
+- `console` - When running Ace commands
+- `web` - When running the HTTP server
+
+### Enable for all environments
+
+Alternatively, enable the scheduler provider globally:
+
+```ts
+import { defineConfig } from '@adonisjs/core/app'
+
+export default defineConfig({
+  providers: [
+    () => import('adonisjs-scheduler/scheduler_provider'),
+  ],
+})
+```
+
+<Warning>
+If you don't configure the scheduler provider for your target environment, the worker will not be able to load scheduled tasks.
+</Warning>
+
+## Worker API
+
+The `Worker` class provides the following methods:
+
+### `constructor(app: ApplicationService)`
+
+Creates a new worker instance:
+
+```ts
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+
+const worker = new Worker(app)
+```
+
+### `async start(tag?: string): Promise<void>`
+
+Starts the scheduler worker with an optional tag filter:
+
+```ts
+// Start with default tag
+await worker.start()
+
+// Start with specific tag
+await worker.start('reports')
+```
+
+The `start` method:
+- Boots the scheduler and loads all schedules
+- Registers cron tasks based on the tag filter
+- Begins executing scheduled tasks
+
+### `async stop(): Promise<void>`
+
+Stops all running scheduled tasks:
+
+```ts
+await worker.stop()
+```
+
+This gracefully stops all cron tasks but does not wait for currently executing tasks to complete.
+
+### `async boot(): Promise<void>`
+
+Manually boots the worker (normally called automatically by `start`):
+
+```ts
+await worker.boot()
+```
+
+The boot process:
+- Loads the scheduler from the container
+- Calls the scheduler's boot method
+- Loads command modules
+
+## Complete example
+
+Here's a complete example of a custom server that runs both the HTTP server and scheduler:
+
+```ts
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+import server from '@adonisjs/core/services/server'
+import logger from '@adonisjs/core/services/logger'
+
+// Start the HTTP server
+const httpServer = await server.start()
+logger.info('HTTP server started')
+
+// Start the scheduler worker
+const worker = new Worker(app)
+await worker.start()
+logger.info('Scheduler worker started')
+
+// Handle graceful shutdown
+app.terminating(async () => {
+  logger.info('Shutting down...')
+  
+  await worker.stop()
+  logger.info('Scheduler stopped')
+  
+  await httpServer.close()
+  logger.info('HTTP server stopped')
+})
+
+process.on('SIGTERM', async () => {
+  await app.terminate()
+})
+
+process.on('SIGINT', async () => {
+  await app.terminate()
+})
+```
+
+## Worker state management
+
+The worker maintains internal state to prevent duplicate initialization:
+
+```ts
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+
+const worker = new Worker(app)
+
+// First call boots and starts
+await worker.start()
+
+// Subsequent calls to boot do nothing
+await worker.boot() // No-op, already booted
+```
+
+## Error handling
+
+When using the manual worker, implement proper error handling:
+
+```ts
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+import logger from '@adonisjs/core/services/logger'
+
+const worker = new Worker(app)
+
+try {
+  await worker.start()
+  logger.info('Scheduler started successfully')
+} catch (error) {
+  logger.error('Failed to start scheduler:', error)
+  process.exit(1)
+}
+
+app.terminating(async () => {
+  try {
+    await worker.stop()
+    logger.info('Scheduler stopped gracefully')
+  } catch (error) {
+    logger.error('Error stopping scheduler:', error)
+  }
+})
+```
+
+<Note>
+The worker logs errors internally using the application's logger. Individual task failures do not stop the worker.
+</Note>

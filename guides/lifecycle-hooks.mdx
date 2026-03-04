@@ -1,0 +1,212 @@
+---
+title: Lifecycle hooks
+description: Use lifecycle hooks to execute code before and after scheduled tasks
+---
+
+The AdonisJS Scheduler provides lifecycle hooks that allow you to execute code at different stages of task execution. You can attach hooks to individual schedules or listen to global scheduler events.
+
+## Task-level hooks
+
+You can attach `before` and `after` hooks to individual scheduled tasks using the `.before()` and `.after()` methods.
+
+### Before hooks
+
+The `.before()` method registers a callback that executes before the scheduled task runs:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler
+  .command('backup:database')
+  .before(async () => {
+    console.log('Preparing database backup...')
+  })
+  .daily()
+```
+
+You can attach multiple `before` hooks to a single schedule. They execute in the order they were registered:
+
+```ts
+scheduler
+  .command('reports:generate')
+  .before(async () => {
+    console.log('Checking prerequisites...')
+  })
+  .before(async () => {
+    console.log('Initializing report engine...')
+  })
+  .hourly()
+```
+
+### After hooks
+
+The `.after()` method registers a callback that executes after the scheduled task completes:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import mail from '@adonisjs/mail/services/main'
+
+scheduler
+  .command('backup:database')
+  .after(async () => {
+    await mail.send((message) => {
+      message
+        .to('admin@example.com')
+        .subject('Backup completed')
+        .html('Database backup has completed successfully')
+    })
+  })
+  .daily()
+```
+
+Multiple `after` hooks execute sequentially after the task completes:
+
+```ts
+scheduler
+  .call(() => {
+    console.log('Processing data...')
+  })
+  .after(async () => {
+    console.log('Cleaning up temporary files...')
+  })
+  .after(async () => {
+    console.log('Sending notifications...')
+  })
+  .everyFiveMinutes()
+```
+
+### Complete example
+
+Here's a practical example combining both hooks:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler
+  .command('sync:external-api')
+  .before(async () => {
+    logger.info('Starting API synchronization')
+  })
+  .after(async () => {
+    logger.info('API synchronization completed')
+  })
+  .everyFifteenMinutes()
+```
+
+## Global scheduler hooks
+
+The scheduler provides global hooks that execute when the scheduler worker starts.
+
+### onStarting hook
+
+The `onStarting` callback executes when the scheduler worker is initializing, before any tasks are scheduled:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.onStarting(({ tag }) => {
+  logger.info(`Scheduler starting with tag: ${tag}`)
+})
+```
+
+This hook receives a context object with:
+- `tag`: The tag filter being used (e.g., `'default'`, `'reports'`)
+
+### onStarted hook
+
+The `onStarted` callback executes after all scheduled tasks have been registered and the worker is fully operational:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.onStarted(({ tag }) => {
+  logger.info(`Scheduler started successfully with tag: ${tag}`)
+})
+```
+
+### onBoot hook
+
+The `onBoot` callback executes during the scheduler's boot phase, before commands are loaded:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.onBoot(async () => {
+  logger.info('Scheduler is booting...')
+  // Perform initialization tasks
+})
+```
+
+## Practical use cases
+
+### Logging and monitoring
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.onStarting(({ tag }) => {
+  logger.info({ tag }, 'Scheduler worker starting')
+})
+
+scheduler.onStarted(({ tag }) => {
+  logger.info({ tag }, 'Scheduler worker ready')
+})
+
+scheduler
+  .command('process:orders')
+  .before(async () => {
+    logger.info('Processing orders started')
+  })
+  .after(async () => {
+    logger.info('Processing orders completed')
+  })
+  .everyMinute()
+```
+
+### Health checks and notifications
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import redis from '@adonisjs/redis/services/main'
+
+scheduler.onStarted(async ({ tag }) => {
+  await redis.set(`scheduler:${tag}:status`, 'running')
+  await redis.set(`scheduler:${tag}:started_at`, Date.now())
+})
+
+scheduler
+  .command('cleanup:logs')
+  .after(async () => {
+    await redis.set('cleanup:last_run', Date.now())
+  })
+  .daily()
+```
+
+### Error tracking
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler
+  .call(async () => {
+    // Task logic that might fail
+  })
+  .before(async () => {
+    logger.info('Task started')
+  })
+  .after(async () => {
+    // This runs even if the task fails
+    logger.info('Task execution completed')
+  })
+  .everyFiveMinutes()
+```
+
+<Note>
+Task-level hooks (`before` and `after`) execute for each task execution, while global hooks (`onStarting`, `onStarted`, `onBoot`) execute once when the scheduler worker starts.
+</Note>

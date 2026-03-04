@@ -1,0 +1,193 @@
+---
+title: Tags and filtering
+description: Organize and selectively run scheduled tasks using tags
+---
+
+The scheduler supports tagging, which allows you to organize scheduled tasks into logical groups and selectively run only specific groups of tasks. This is useful for managing different environments, separating concerns, or running different sets of tasks on different servers.
+
+## Default tag
+
+By default, all scheduled tasks are assigned the `'default'` tag. When you run the scheduler without specifying a tag, it executes all tasks with the default tag:
+
+```bash
+node ace scheduler:run
+```
+
+## Assigning tags to individual schedules
+
+Use the `tag()` method to assign a custom tag to a scheduled task:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler
+  .call(() => {
+    console.log('Purge DB!')
+  })
+  .tag('my-tag')
+  .weekly()
+```
+
+Now this task will only run when you explicitly specify the `my-tag` tag:
+
+```bash
+node ace scheduler:run --tag my-tag
+```
+
+## Grouping schedules with tags
+
+Use `scheduler.withTag()` to assign the same tag to multiple schedules:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler.withTag(
+  () => {
+    scheduler.command('inspire').everySecond()
+    scheduler.command('backup').everyMinute()
+    scheduler.call(() => console.log('Maintenance task')).hourly()
+  },
+  'maintenance'
+)
+```
+
+All schedules defined within the callback will be tagged with `'maintenance'`. You can then run all maintenance tasks together:
+
+```bash
+node ace scheduler:run --tag maintenance
+```
+
+## Practical use cases
+
+### Environment-based scheduling
+
+Run different tasks in different environments:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import env from '#start/env'
+
+if (env.get('NODE_ENV') === 'production') {
+  scheduler.withTag(
+    () => {
+      scheduler.command('send-reports').daily()
+      scheduler.command('backup-database').hourly()
+    },
+    'production'
+  )
+}
+
+scheduler.withTag(
+  () => {
+    scheduler.command('seed-test-data').everyMinute()
+    scheduler.command('cleanup-logs').hourly()
+  },
+  'development'
+)
+```
+
+### Separating workloads by server
+
+When running multiple scheduler instances, use tags to distribute work:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+// Server 1: CPU-intensive tasks
+scheduler.withTag(
+  () => {
+    scheduler.command('generate-reports').hourly()
+    scheduler.command('process-videos').everyFiveMinutes()
+  },
+  'compute'
+)
+
+// Server 2: I/O-intensive tasks
+scheduler.withTag(
+  () => {
+    scheduler.command('sync-files').everyMinute()
+    scheduler.command('backup-database').hourly()
+  },
+  'io'
+)
+```
+
+Run the appropriate tag on each server:
+
+```bash
+# On compute server
+node ace scheduler:run --tag compute
+
+# On I/O server
+node ace scheduler:run --tag io
+```
+
+### Organizing by business domain
+
+Group tasks by business functionality:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler.withTag(
+  () => {
+    scheduler.command('send-invoice-reminders').daily()
+    scheduler.command('process-payments').everyFiveMinutes()
+    scheduler.command('generate-billing-reports').monthly()
+  },
+  'billing'
+)
+
+scheduler.withTag(
+  () => {
+    scheduler.command('send-notifications').everyMinute()
+    scheduler.command('process-email-queue').everyTwoMinutes()
+  },
+  'notifications'
+)
+```
+
+## Combining tags with other features
+
+Tags work seamlessly with other scheduler features:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler.withTag(
+  () => {
+    scheduler
+      .command('intensive-task')
+      .everyMinute()
+      .withoutOverlapping()
+      .before(async () => console.log('Starting task'))
+      .after(async () => console.log('Task completed'))
+  },
+  'critical'
+)
+```
+
+## Running the scheduler with tags
+
+The `scheduler:run` and `scheduler:work` commands both accept a `--tag` option:
+
+```bash
+# Run schedules with a specific tag
+node ace scheduler:run --tag my-tag
+
+# Run and restart on file changes (development mode)
+node ace scheduler:run --watch --tag my-tag
+
+# Run as a long-running worker process
+node ace scheduler:work --tag my-tag
+```
+
+Only schedules matching the specified tag will be executed. Schedules with different tags will be ignored for that scheduler instance.
+
+## Best practices
+
+- Use descriptive tag names that clearly indicate the purpose or category of tasks
+- Consider using tags to separate critical tasks from non-critical ones
+- Document your tagging strategy in your project's README
+- Use environment variables to configure which tags run in different environments
+- Monitor each tag separately to track the health and performance of different task groups

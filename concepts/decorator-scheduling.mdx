@@ -1,0 +1,155 @@
+---
+title: Decorator scheduling
+description: Schedule tasks directly on command classes using the @schedule decorator
+---
+
+In addition to defining schedules in your `start/scheduler.ts` file, you can use the `@schedule` decorator to define schedules directly on your command classes. This approach keeps scheduling configuration close to the command implementation.
+
+## Basic usage
+
+Import the `@schedule` decorator from the scheduler package and apply it to your command class:
+
+```ts
+import { BaseCommand, args } from '@adonisjs/core/ace'
+import { schedule } from 'adonisjs-scheduler'
+
+@schedule('* * * * *')
+export default class PurgeUsers extends BaseCommand {
+  static commandName = 'purge:users'
+  static description = 'Purge old user records'
+
+  async run() {
+    // Command implementation
+  }
+}
+```
+
+The decorator accepts a cron expression as its first parameter, following the extended format with seconds:
+
+```
+seconds minutes hours dayOfMonth month dayOfWeek
+```
+
+## Passing command arguments
+
+If your command requires arguments, pass them as the second parameter to the decorator:
+
+```ts
+import { BaseCommand, args } from '@adonisjs/core/ace'
+import { schedule } from 'adonisjs-scheduler'
+
+@schedule('* * * * *', ['30 days'])
+export default class PurgeUsers extends BaseCommand {
+  static commandName = 'purge:users'
+  static description = 'Purge old user records'
+
+  @args.string()
+  declare olderThan: string
+
+  async run() {
+    this.logger.info(`Purging users older than ${this.olderThan}`)
+    // Command implementation
+  }
+}
+```
+
+The second parameter accepts either a single string or an array of strings.
+
+## Using the fluent API
+
+Instead of a cron expression, you can pass a callback function that receives a schedule instance. This allows you to use the fluent frequency API:
+
+```ts
+import { BaseCommand, args } from '@adonisjs/core/ace'
+import { schedule } from 'adonisjs-scheduler'
+
+@schedule((s) => s.everyFiveSeconds())
+export default class PurgeUsers extends BaseCommand {
+  static commandName = 'purge:users'
+  static description = 'Purge old user records'
+
+  async run() {
+    // Command implementation
+  }
+}
+```
+
+The callback receives a `ScheduleCommand` instance that you can chain with any frequency method:
+
+```ts
+@schedule((s) => s.everyMinute().timezone('America/New_York'))
+@schedule((s) => s.daily().withoutOverlapping())
+@schedule((s) => s.hourly().immediate())
+```
+
+## Combining with command arguments
+
+When using the fluent API, you can still pass command arguments as the second parameter:
+
+```ts
+import { BaseCommand, args } from '@adonisjs/core/ace'
+import { schedule } from 'adonisjs-scheduler'
+
+@schedule((s) => s.everyFiveSeconds(), ['30 days'])
+export default class PurgeUsers extends BaseCommand {
+  static commandName = 'purge:users'
+  static description = 'Purge old user records'
+
+  @args.string()
+  declare olderThan: string
+
+  async run() {
+    this.logger.info(`Purging users older than ${this.olderThan}`)
+    // Command implementation
+  }
+}
+```
+
+## Multiple schedules
+
+You can apply the `@schedule` decorator multiple times to run the same command on different schedules:
+
+```ts
+import { BaseCommand, args } from '@adonisjs/core/ace'
+import { schedule } from 'adonisjs-scheduler'
+
+@schedule('* * * * *', ['30 days'])
+@schedule((s) => s.everyFiveSeconds().immediate(), ['7 days'])
+@schedule((s) => s.everyMinute(), ['42 days'])
+export default class PurgeUsers extends BaseCommand {
+  static commandName = 'purge:users'
+  static description = 'Purge old user records'
+
+  @args.string()
+  declare olderThan: string
+
+  async run() {
+    this.logger.info(`Purging users older than ${this.olderThan}`)
+    // Command implementation
+  }
+}
+```
+
+In this example, the `purge:users` command will run:
+- Every minute with the argument `'30 days'`
+- Every five seconds (and immediately on startup) with the argument `'7 days'`
+- Every minute with the argument `'42 days'`
+
+Each decorator creates a separate scheduled task with its own configuration.
+
+## Decorator vs file-based scheduling
+
+Both approaches are valid and can be used together in the same application:
+
+**Decorator approach:**
+- Schedules are defined close to the command implementation
+- Useful for commands that are always scheduled
+- Makes the command's scheduling behavior immediately visible
+
+**File-based approach:**
+- Schedules are centralized in `start/scheduler.ts`
+- Provides a single place to view all scheduled tasks
+- Easier to modify schedules without touching command files
+- Better for commands that may or may not be scheduled depending on environment
+
+Choose the approach that best fits your project's organization and team preferences.

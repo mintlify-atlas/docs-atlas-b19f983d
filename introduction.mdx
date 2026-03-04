@@ -1,0 +1,88 @@
+---
+title: Introduction
+description: Learn about AdonisJS Scheduler, a powerful task scheduler for AdonisJS v6 applications
+---
+
+AdonisJS Scheduler is a task scheduler for AdonisJS v6 that allows you to schedule commands and callbacks to run at specific times or intervals. Built on top of node-cron, it provides a fluent API for defining scheduled tasks in your application.
+
+## Why use AdonisJS Scheduler?
+
+Scheduling tasks is a common requirement in modern web applications. Whether you need to send daily reports, clean up old records, or run periodic maintenance tasks, AdonisJS Scheduler makes it simple and intuitive.
+
+### Key features
+
+<CardGroup cols={2}>
+  <Card title="Fluent API" icon="code">
+    Define schedules using an expressive, chainable API that's easy to read and maintain
+  </Card>
+  <Card title="Multiple schedule types" icon="calendar">
+    Schedule both Ace commands and custom callback functions
+  </Card>
+  <Card title="Decorator support" icon="at">
+    Use the `@schedule` decorator to define schedules directly on your commands
+  </Card>
+  <Card title="Overlap prevention" icon="lock">
+    Prevent tasks from running concurrently with built-in overlap protection
+  </Card>
+  <Card title="Timezone support" icon="globe">
+    Run tasks in specific timezones with the `.timezone()` method
+  </Card>
+  <Card title="Hot reload" icon="arrows-rotate">
+    Automatically restart the scheduler when files change during development
+  </Card>
+  <Card title="Tagging" icon="tag">
+    Organize and selectively run schedules using tags
+  </Card>
+  <Card title="Lifecycle hooks" icon="bolt">
+    Execute code before and after scheduled tasks with `.before()` and `.after()` callbacks
+  </Card>
+</CardGroup>
+
+## Schedule frequency options
+
+AdonisJS Scheduler supports a wide range of scheduling frequencies:
+
+- **Seconds**: `.everySecond()`, `.everyFiveSeconds()`, `.everyTenSeconds()`
+- **Minutes**: `.everyMinute()`, `.everyFiveMinutes()`, `.everyThirtyMinutes()`
+- **Hours**: `.hourly()`, `.everyTwoHours()`, `.everyFourHours()`
+- **Days**: `.daily()`, `.weekdays()`, `.weekends()`
+- **Weeks**: `.weekly()`, `.mondays()`, `.tuesdays()`, etc.
+- **Months**: `.monthly()`, `.twiceMonthly()`, `.lastDayOfMonth()`
+- **Custom**: `.cron('* * * * *')` for custom cron expressions
+
+## Example usage
+
+Here's a quick preview of what scheduling tasks looks like:
+
+```ts start/scheduler.ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import PurgeUsers from '#commands/purge_users'
+
+// Schedule an Ace command
+scheduler.command('inspire').everyFiveSeconds()
+
+// Schedule a command with arguments and prevent overlapping
+scheduler.command(PurgeUsers, ['30 days'])
+  .daily()
+  .withoutOverlapping()
+
+// Schedule a callback function
+scheduler.call(() => {
+  console.log('Running cleanup task!')
+}).weekly()
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install and configure AdonisJS Scheduler in your project
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create your first scheduled task in minutes
+  </Card>
+</CardGroup>
+
+<Note>
+  For AdonisJS v5, use the [0.x branch](https://github.com/KABBOUCHI/adonisjs-scheduler/tree/0.x) of the package.
+</Note>

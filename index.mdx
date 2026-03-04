@@ -1,97 +1,243 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: AdonisJS Scheduler Documentation
+description: Task scheduler for AdonisJS applications with cron-based scheduling and decorator support
+mode: custom
 ---
 
-## Setting up
+<div className="relative bg-gradient-to-br from-[#020627] via-[#11161e] to-[#020627] py-20 overflow-hidden">
+  <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAxMCAwIEwgMCAwIDAgMTAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzg0OGM4ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
+  
+  <div className="relative max-w-6xl mx-auto px-6 lg:px-8">
+    <div className="text-center">
+      <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+        Task Scheduler for AdonisJS
+      </h1>
+      <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto mb-10">
+        Build reliable cron jobs and scheduled tasks with an elegant, decorator-based API. Features overlapping prevention, timezone support, and hot-reloading during development.
+      </p>
+      
+      <div className="flex flex-wrap justify-center gap-4 mb-8">
+        <a 
+          href="/quickstart" 
+          className="inline-flex items-center px-6 py-3 rounded-lg bg-[#529c3a] hover:bg-[#238636] text-white font-semibold transition-colors no-underline"
+        >
+          Get Started
+          <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+        </a>
+        <a 
+          href="/api/scheduler" 
+          className="inline-flex items-center px-6 py-3 rounded-lg border border-gray-600 bg-gray-800/40 hover:bg-gray-800/60 hover:border-[#848c8e] text-white font-semibold transition-colors no-underline"
+        >
+          API Reference
+        </a>
+      </div>
+      
+      <div className="inline-flex items-center gap-3 text-sm text-gray-400">
+        <span className="flex items-center gap-1.5">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+          AdonisJS v6+
+        </span>
+        <span className="text-gray-600">•</span>
+        <span className="flex items-center gap-1.5">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+          TypeScript
+        </span>
+        <span className="text-gray-600">•</span>
+        <span className="flex items-center gap-1.5">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+          </svg>
+          MIT License
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+      Quick Start
+    </h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">
+      Get up and running with scheduled tasks in minutes
+    </p>
+  </div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+  <Steps>
+    <Step title="Install the package">
+      Install AdonisJS Scheduler using the Ace CLI:
+      
+      ```bash
+      node ace add adonisjs-scheduler
+      ```
+      
+      This command automatically configures the provider and creates the necessary files.
+    </Step>
+    
+    <Step title="Define your first schedule">
+      Open `start/scheduler.ts` and define a scheduled task:
+      
+      ```typescript
+      import scheduler from 'adonisjs-scheduler/services/main'
+      
+      scheduler
+        .call(() => {
+          console.log('This runs every minute!')
+        })
+        .everyMinute()
+      ```
+    </Step>
+    
+    <Step title="Run the scheduler">
+      Start the scheduler worker to execute your scheduled tasks:
+      
+      ```bash
+      node ace scheduler:run
+      ```
+      
+      For development, use the `--watch` flag to enable hot-reloading:
+      
+      ```bash
+      node ace scheduler:run --watch
+      ```
+    </Step>
+  </Steps>
+</div>
 
-## Make it yours
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+      Key Features
+    </h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">
+      Everything you need for robust task scheduling
+    </p>
+  </div>
 
-Design a docs site that looks great and empowers your users.
+  <CardGroup cols={2}>
+    <Card title="Intuitive Frequency API" icon="clock" href="/concepts/schedule-frequencies">
+      Expressive methods like `.everyMinute()`, `.daily()`, and `.weekly()` make scheduling readable and maintainable.
+    </Card>
+    <Card title="Decorator Scheduling" icon="at" href="/concepts/decorator-scheduling">
+      Use the `@schedule` decorator to define schedules directly on your command classes.
+    </Card>
+    <Card title="Overlap Prevention" icon="lock" href="/concepts/overlapping-prevention">
+      Built-in locking ensures tasks don't run concurrently, preventing race conditions.
+    </Card>
+    <Card title="Tag-Based Filtering" icon="tag" href="/concepts/tags-and-filtering">
+      Organize and run specific groups of scheduled tasks using tags.
+    </Card>
+    <Card title="Timezone Support" icon="globe" href="/guides/timezones">
+      Schedule tasks in any timezone for international deployments.
+    </Card>
+    <Card title="Lifecycle Hooks" icon="arrows-rotate" href="/guides/lifecycle-hooks">
+      Execute custom logic before and after each scheduled task runs.
+    </Card>
+  </CardGroup>
+</div>
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-3">
+      Explore the Documentation
+    </h2>
+    <p className="text-base text-gray-600 dark:text-gray-400">
+      Learn how to build powerful scheduled tasks
+    </p>
+  </div>
 
-## Create beautiful pages
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <a href="/concepts/defining-schedules" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#848c8e] dark:hover:border-[#848c8e] overflow-hidden transition-colors no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[#529c3a]/10 text-[#529c3a]">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">Core Concepts</h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Understand scheduling fundamentals, frequencies, and decorator patterns.
+        </p>
+        <div className="flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#848c8e]">
+          Learn more
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
 
-Everything you need to create world-class documentation.
+    <a href="/guides/running-scheduler" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#848c8e] dark:hover:border-[#848c8e] overflow-hidden transition-colors no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[#529c3a]/10 text-[#529c3a]">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">Guides</h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Practical guides for running schedulers, lifecycle hooks, and timezones.
+        </p>
+        <div className="flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#848c8e]">
+          View guides
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+    <a href="/api/scheduler" className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] hover:border-[#848c8e] dark:hover:border-[#848c8e] overflow-hidden transition-colors no-underline bg-white dark:bg-[#1a1d27]">
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-[#529c3a]/10 text-[#529c3a]">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+          </div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white m-0">API Reference</h3>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Complete API documentation for all methods, classes, and commands.
+        </p>
+        <div className="flex items-center text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#848c8e]">
+          Explore API
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
 
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl border border-gray-200 dark:border-[#27272a] bg-gradient-to-br from-gray-50 to-white dark:from-[#1a1d27] dark:to-[#11161e] p-8 sm:p-12 text-center">
+    <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      Ready to get started?
+    </h2>
+    <p className="text-base text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-8">
+      Install AdonisJS Scheduler and build your first scheduled task in minutes.
+    </p>
+    <a 
+      href="/installation" 
+      className="inline-flex items-center px-6 py-3 rounded-lg bg-[#529c3a] hover:bg-[#238636] text-white font-semibold transition-colors no-underline"
+    >
+      View Installation Guide
+      <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+      </svg>
+    </a>
+  </div>
+</div>

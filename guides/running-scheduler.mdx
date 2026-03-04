@@ -1,0 +1,145 @@
+---
+title: Running the scheduler
+description: Learn how to run the AdonisJS Scheduler in development and production
+---
+
+The AdonisJS Scheduler provides commands to execute your scheduled tasks. You can run the scheduler using either `scheduler:run` or `scheduler:work` commands.
+
+## Basic usage
+
+To start the scheduler and begin executing your scheduled tasks, run:
+
+```bash
+node ace scheduler:run
+```
+
+The `scheduler:work` command is an alias that works identically:
+
+```bash
+node ace scheduler:work
+```
+
+Both commands will:
+- Boot the scheduler and load all defined schedules
+- Start executing tasks based on their cron expressions
+- Keep the process alive to continue running scheduled tasks
+
+## Development mode with auto-restart
+
+During development, you can use the `--watch` flag to automatically restart the scheduler when files are modified:
+
+```bash
+node ace scheduler:run --watch
+```
+
+The watch mode monitors your project directory for changes to `.ts` and `.js` files, excluding:
+- `node_modules/`
+- `.git/`
+- `build/`
+
+When a file change is detected, the scheduler automatically restarts after a 300ms debounce period.
+
+<Note>
+The `--watch` flag spawns a child process running `scheduler:run`, making it easy to develop and test your scheduled tasks.
+</Note>
+
+## Filtering by tags
+
+You can filter which scheduled tasks to run using the `--tag` flag:
+
+```bash
+node ace scheduler:run --tag=reports
+```
+
+This runs only the schedules that have been tagged with the specified tag. For example:
+
+```ts
+// start/scheduler.ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler
+  .call(() => {
+    console.log('Generate daily report')
+  })
+  .tag('reports')
+  .daily()
+
+scheduler
+  .call(() => {
+    console.log('Cleanup temp files')
+  })
+  .tag('maintenance')
+  .hourly()
+```
+
+Running with `--tag=reports` will only execute the daily report task.
+
+<Tip>
+If you don't specify a tag, the scheduler defaults to running tasks tagged with `'default'`.
+</Tip>
+
+## Difference between run and work
+
+There is no functional difference between `scheduler:run` and `scheduler:work`. Both commands:
+- Accept the same flags (`--watch`, `--tag`)
+- Execute scheduled tasks in the same way
+- Keep the process alive
+
+The `scheduler:work` command exists as an alias for convenience and familiarity with other task queue systems.
+
+## Running in production
+
+In production, you typically want to run the scheduler as a long-running process managed by a process manager:
+
+### Using PM2
+
+```bash
+pm2 start "node ace scheduler:run" --name scheduler
+```
+
+### Using systemd
+
+Create a systemd service file:
+
+```ini
+[Unit]
+Description=AdonisJS Scheduler
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/app
+ExecStart=/usr/bin/node ace scheduler:run
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### With Docker
+
+```dockerfile
+CMD ["node", "ace", "scheduler:run"]
+```
+
+<Warning>
+The scheduler process must remain running continuously. If it stops, scheduled tasks will not execute until you restart it.
+</Warning>
+
+## Multiple scheduler instances
+
+You can run multiple scheduler instances with different tags to distribute workloads:
+
+```bash
+# Terminal 1 - Run report tasks
+node ace scheduler:run --tag=reports
+
+# Terminal 2 - Run maintenance tasks
+node ace scheduler:run --tag=maintenance
+```
+
+This approach allows you to:
+- Scale specific workloads independently
+- Isolate critical tasks from resource-intensive ones
+- Deploy scheduler instances on different servers

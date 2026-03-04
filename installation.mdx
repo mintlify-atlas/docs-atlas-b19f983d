@@ -1,0 +1,198 @@
+---
+title: Installation
+description: Install and configure AdonisJS Scheduler in your AdonisJS v6 application
+---
+
+Installing AdonisJS Scheduler is straightforward using the official AdonisJS package manager integration.
+
+## Requirements
+
+- AdonisJS v6.2.0 or higher
+- Node.js v18 or higher
+
+## Installation steps
+
+<Steps>
+  <Step title="Install the package">
+    Run the following command in your AdonisJS project:
+
+    ```bash
+    node ace add adonisjs-scheduler
+    ```
+
+    This command will:
+    - Install the `adonisjs-scheduler` package from npm
+    - Register the scheduler provider in your `adonisrc.ts` file
+    - Register scheduler commands for running the scheduler
+    - Create a `start/scheduler.ts` file with example schedules
+    - Add the scheduler file to the preload configuration
+  </Step>
+
+  <Step title="Verify the configuration">
+    After installation, your `adonisrc.ts` should include the following additions:
+
+    <CodeGroup>
+      ```ts adonisrc.ts
+      import { defineConfig } from '@adonisjs/core/app'
+
+      export default defineConfig({
+        // ... other config
+        
+        providers: [
+          // ... other providers
+          () => import('adonisjs-scheduler/scheduler_provider'),
+        ],
+        
+        commands: [
+          // ... other commands
+          () => import('adonisjs-scheduler/commands'),
+        ],
+        
+        preloads: [
+          // ... other preload files
+          () => import('#start/scheduler'),
+        ],
+      })
+      ```
+    </CodeGroup>
+
+    <Note>
+      The provider is configured to run in the `console` environment by default. This means it only loads when running Ace commands, not during HTTP requests.
+    </Note>
+  </Step>
+
+  <Step title="Review the starter file">
+    The installation creates a `start/scheduler.ts` file with example schedules:
+
+    ```ts start/scheduler.ts
+    import scheduler from 'adonisjs-scheduler/services/main'
+
+    scheduler.command("inspire").everyFiveSeconds()
+
+    scheduler.call(() => {
+        console.log("Pruge DB!")
+    }).weekly()
+    ```
+
+    You can modify this file to add your own scheduled tasks.
+  </Step>
+
+  <Step title="Test the installation">
+    Verify the installation by running the scheduler:
+
+    ```bash
+    node ace scheduler:run
+    ```
+
+    You should see the example `inspire` command running every five seconds.
+
+    <Info>
+      Press `Ctrl+C` to stop the scheduler when you're done testing.
+    </Info>
+  </Step>
+</Steps>
+
+## Available commands
+
+After installation, you'll have access to the following scheduler commands:
+
+<CodeGroup>
+  ```bash Run scheduler
+  node ace scheduler:run
+  ```
+
+  ```bash Run with hot reload
+  node ace scheduler:run --watch
+  ```
+
+  ```bash Run specific tag
+  node ace scheduler:run --tag my-tag
+  ```
+
+  ```bash List all schedules
+  node ace scheduler:list
+  ```
+</CodeGroup>
+
+## Manual installation
+
+If you prefer to install manually or need more control over the configuration:
+
+<Steps>
+  <Step title="Install the package">
+    ```bash
+    npm install adonisjs-scheduler
+    ```
+  </Step>
+
+  <Step title="Configure the provider">
+    Add the provider to your `adonisrc.ts`:
+
+    ```ts adonisrc.ts
+    providers: [
+      {
+        file: () => import('adonisjs-scheduler/scheduler_provider'),
+        environment: ['console'],
+      },
+    ]
+    ```
+  </Step>
+
+  <Step title="Register commands">
+    Add the scheduler commands to your `adonisrc.ts`:
+
+    ```ts adonisrc.ts
+    commands: [
+      () => import('adonisjs-scheduler/commands'),
+    ]
+    ```
+  </Step>
+
+  <Step title="Create scheduler file">
+    Create a `start/scheduler.ts` file:
+
+    ```ts start/scheduler.ts
+    import scheduler from 'adonisjs-scheduler/services/main'
+
+    // Add your schedules here
+    ```
+  </Step>
+
+  <Step title="Add preload file">
+    Register the scheduler file in your `adonisrc.ts`:
+
+    ```ts adonisrc.ts
+    preloads: [
+      () => import('#start/scheduler'),
+    ]
+    ```
+  </Step>
+</Steps>
+
+## Environment configuration
+
+By default, the scheduler provider runs only in the `console` environment. If you need to run the scheduler in other environments (e.g., web, test), modify the provider configuration:
+
+```ts adonisrc.ts
+providers: [
+  {
+    file: () => import('adonisjs-scheduler/scheduler_provider'),
+    environment: ['console', 'web'], // Add more environments
+  },
+]
+
+// Or enable for all environments:
+providers: [
+  () => import('adonisjs-scheduler/scheduler_provider'),
+]
+```
+
+<Warning>
+  Be cautious when enabling the scheduler in the `web` environment. This will load scheduled tasks during HTTP requests, which may not be desired.
+</Warning>
+
+## Next steps
+
+<Card title="Quickstart" icon="rocket" href="/quickstart">
+  Now that you have AdonisJS Scheduler installed, learn how to create your first scheduled task
+</Card>

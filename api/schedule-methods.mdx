@@ -1,0 +1,962 @@
+---
+title: Schedule Methods
+description: API reference for schedule configuration and frequency methods
+---
+
+All schedule instances (returned by `scheduler.command()` and `scheduler.call()`) inherit from the `BaseSchedule` class, which provides methods for configuring frequency, timing, and behavior.
+
+## Configuration Methods
+
+### timezone()
+
+Set the timezone for the schedule.
+
+```typescript
+timezone(timezone: string): this
+```
+
+<ParamField path="timezone" type="string" required>
+  A valid timezone string (e.g., `'America/New_York'`, `'UTC'`, `'Asia/Tokyo'`)
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('reports:generate')
+  .daily()
+  .timezone('America/New_York')
+```
+
+---
+
+### tag()
+
+Assign a tag to the schedule for grouping and filtering.
+
+```typescript
+tag(tag: string): this
+```
+
+<ParamField path="tag" type="string" required>
+  The tag name to assign to this schedule
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('emails:send')
+  .everyMinute()
+  .tag('email-queue')
+```
+
+---
+
+### immediate()
+
+Run the schedule immediately when the worker starts, in addition to the scheduled times.
+
+```typescript
+immediate(state?: boolean): this
+```
+
+<ParamField path="state" type="boolean" default="true">
+  Whether to run immediately on start. Pass `false` to disable
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('cache:warm')
+  .daily()
+  .immediate() // Runs on startup and then daily
+```
+
+---
+
+### skip()
+
+Disable the schedule without removing it.
+
+```typescript
+skip(state?: boolean): this
+```
+
+<ParamField path="state" type="boolean" default="true">
+  Whether to skip this schedule. Pass `false` to re-enable
+</ParamField>
+
+**Example**
+
+```typescript
+import env from '@adonisjs/core/services/env'
+
+scheduler.command('maintenance:check')
+  .hourly()
+  .skip(env.get('NODE_ENV') === 'development')
+```
+
+---
+
+### withoutOverlapping()
+
+Prevent the schedule from running if the previous execution is still in progress.
+
+```typescript
+withoutOverlapping(expiresAt?: number): this
+```
+
+<ParamField path="expiresAt" type="number" default="3600000">
+  Lock expiration time in milliseconds (default: 1 hour). After this time, the lock is released even if the task is still running
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('db:backup')
+  .daily()
+  .withoutOverlapping(7200000) // 2 hours
+```
+
+---
+
+## Lifecycle Methods
+
+### before()
+
+Register a callback to run before the schedule executes.
+
+```typescript
+before(callback: () => Promise<void>): this
+```
+
+<ParamField path="callback" type="() => Promise<void>" required>
+  An async callback function to execute before the schedule runs
+</ParamField>
+
+**Example**
+
+```typescript
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.command('reports:generate')
+  .daily()
+  .before(async () => {
+    logger.info('Starting report generation...')
+  })
+```
+
+---
+
+### after()
+
+Register a callback to run after the schedule executes.
+
+```typescript
+after(callback: () => Promise<void>): this
+```
+
+<ParamField path="callback" type="() => Promise<void>" required>
+  An async callback function to execute after the schedule completes
+</ParamField>
+
+**Example**
+
+```typescript
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.command('reports:generate')
+  .daily()
+  .after(async () => {
+    logger.info('Report generation completed')
+  })
+```
+
+---
+
+## Frequency Methods - Every Second
+
+### everySecond()
+
+Run the schedule every second.
+
+```typescript
+everySecond(): this
+```
+
+**Example**
+
+```typescript
+scheduler.call(() => console.log('Tick')).everySecond()
+```
+
+---
+
+### everySeconds()
+
+Run the schedule every N seconds.
+
+```typescript
+everySeconds(second: number): this
+```
+
+<ParamField path="second" type="number" required>
+  Number of seconds between executions (1-59)
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('check:status').everySeconds(30)
+```
+
+---
+
+### everyFiveSeconds()
+
+Run the schedule every 5 seconds.
+
+```typescript
+everyFiveSeconds(): this
+```
+
+---
+
+### everyTenSeconds()
+
+Run the schedule every 10 seconds.
+
+```typescript
+everyTenSeconds(): this
+```
+
+---
+
+### everyFifteenSeconds()
+
+Run the schedule every 15 seconds.
+
+```typescript
+everyFifteenSeconds(): this
+```
+
+---
+
+### everyThirtySeconds()
+
+Run the schedule every 30 seconds.
+
+```typescript
+everyThirtySeconds(): this
+```
+
+---
+
+## Frequency Methods - Every Minute
+
+### everyMinute()
+
+Run the schedule every minute.
+
+```typescript
+everyMinute(): this
+```
+
+**Example**
+
+```typescript
+scheduler.command('queue:process').everyMinute()
+```
+
+---
+
+### everyMinutes()
+
+Run the schedule every N minutes.
+
+```typescript
+everyMinutes(minutes: number): this
+```
+
+<ParamField path="minutes" type="number" required>
+  Number of minutes between executions
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('cache:clear').everyMinutes(15)
+```
+
+---
+
+### everyTwoMinutes()
+
+Run the schedule every 2 minutes.
+
+```typescript
+everyTwoMinutes(): this
+```
+
+---
+
+### everyThreeMinutes()
+
+Run the schedule every 3 minutes.
+
+```typescript
+everyThreeMinutes(): this
+```
+
+---
+
+### everyFourMinutes()
+
+Run the schedule every 4 minutes.
+
+```typescript
+everyFourMinutes(): this
+```
+
+---
+
+### everyFiveMinutes()
+
+Run the schedule every 5 minutes.
+
+```typescript
+everyFiveMinutes(): this
+```
+
+---
+
+### everyTenMinutes()
+
+Run the schedule every 10 minutes.
+
+```typescript
+everyTenMinutes(): this
+```
+
+---
+
+### everyFifteenMinutes()
+
+Run the schedule every 15 minutes.
+
+```typescript
+everyFifteenMinutes(): this
+```
+
+---
+
+### everyThirtyMinutes()
+
+Run the schedule every 30 minutes.
+
+```typescript
+everyThirtyMinutes(): this
+```
+
+---
+
+## Frequency Methods - Hourly
+
+### hourly()
+
+Run the schedule every hour at the start of the hour.
+
+```typescript
+hourly(): this
+```
+
+**Example**
+
+```typescript
+scheduler.command('logs:rotate').hourly()
+```
+
+---
+
+### hourlyAt()
+
+Run the schedule every hour at a specific minute offset.
+
+```typescript
+hourlyAt(offset: string | number | number[]): this
+```
+
+<ParamField path="offset" type="string | number | number[]" required>
+  The minute(s) of the hour to run (0-59). Can be a single value or an array for multiple times
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('sync:data')
+  .hourlyAt(15) // Runs at :15 past every hour
+
+scheduler.command('check:health')
+  .hourlyAt([0, 30]) // Runs at :00 and :30 of every hour
+```
+
+---
+
+### everyHours()
+
+Run the schedule every N hours with an optional minute offset.
+
+```typescript
+everyHours(hours: number, offset?: string | number | number[]): this
+```
+
+<ParamField path="hours" type="number" required>
+  Number of hours between executions
+</ParamField>
+
+<ParamField path="offset" type="string | number | number[]" default="0">
+  The minute(s) of the hour to run
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('db:backup').everyHours(6, 30)
+```
+
+---
+
+### everyOddHour()
+
+Run the schedule every odd hour (1, 3, 5, etc.).
+
+```typescript
+everyOddHour(offset?: string | number | number[]): this
+```
+
+<ParamField path="offset" type="string | number | number[]" default="0">
+  The minute(s) of the hour to run
+</ParamField>
+
+---
+
+### everyTwoHours()
+
+Run the schedule every 2 hours.
+
+```typescript
+everyTwoHours(offset?: string | number | number[]): this
+```
+
+---
+
+### everyThreeHours()
+
+Run the schedule every 3 hours.
+
+```typescript
+everyThreeHours(offset?: string | number | number[]): this
+```
+
+---
+
+### everyFourHours()
+
+Run the schedule every 4 hours.
+
+```typescript
+everyFourHours(offset?: string | number | number[]): this
+```
+
+---
+
+### everyFiveHours()
+
+Run the schedule every 5 hours.
+
+```typescript
+everyFiveHours(offset?: string | number | number[]): this
+```
+
+---
+
+### everySixHours()
+
+Run the schedule every 6 hours.
+
+```typescript
+everySixHours(offset?: string | number | number[]): this
+```
+
+---
+
+## Frequency Methods - Daily
+
+### daily()
+
+Run the schedule once a day at midnight.
+
+```typescript
+daily(): this
+```
+
+**Example**
+
+```typescript
+scheduler.command('reports:daily').daily()
+```
+
+---
+
+### dailyAt()
+
+Run the schedule once a day at a specific time.
+
+```typescript
+dailyAt(time: string): this
+```
+
+<ParamField path="time" type="string" required>
+  Time in 24-hour format (e.g., `'14:30'`, `'9:00'`)
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('backup:database').dailyAt('2:30')
+```
+
+---
+
+### at()
+
+Alias for `dailyAt()`.
+
+```typescript
+at(time: string): this
+```
+
+---
+
+### twiceDaily()
+
+Run the schedule twice a day at specified hours.
+
+```typescript
+twiceDaily(first?: number, second?: number): this
+```
+
+<ParamField path="first" type="number" default="1">
+  First hour of the day (0-23)
+</ParamField>
+
+<ParamField path="second" type="number" default="13">
+  Second hour of the day (0-23)
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('sync:users').twiceDaily(8, 20)
+```
+
+---
+
+### twiceDailyAt()
+
+Run the schedule twice a day at specified hours with a minute offset.
+
+```typescript
+twiceDailyAt(first?: number, second?: number, offset?: number): this
+```
+
+<ParamField path="first" type="number" default="1">
+  First hour of the day (0-23)
+</ParamField>
+
+<ParamField path="second" type="number" default="13">
+  Second hour of the day (0-23)
+</ParamField>
+
+<ParamField path="offset" type="number" default="0">
+  Minute offset (0-59)
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('sync:users').twiceDailyAt(8, 20, 30) // 8:30 and 20:30
+```
+
+---
+
+## Frequency Methods - Weekly
+
+### weekdays()
+
+Run the schedule on weekdays (Monday through Friday).
+
+```typescript
+weekdays(): this
+```
+
+**Example**
+
+```typescript
+scheduler.command('reports:business').dailyAt('9:00').weekdays()
+```
+
+---
+
+### weekends()
+
+Run the schedule on weekends (Saturday and Sunday).
+
+```typescript
+weekends(): this
+```
+
+---
+
+### mondays()
+
+Run the schedule on Mondays.
+
+```typescript
+mondays(): this
+```
+
+---
+
+### tuesdays()
+
+Run the schedule on Tuesdays.
+
+```typescript
+tuesdays(): this
+```
+
+---
+
+### wednesdays()
+
+Run the schedule on Wednesdays.
+
+```typescript
+wednesdays(): this
+```
+
+---
+
+### thursdays()
+
+Run the schedule on Thursdays.
+
+```typescript
+thursdays(): this
+```
+
+---
+
+### fridays()
+
+Run the schedule on Fridays.
+
+```typescript
+fridays(): this
+```
+
+---
+
+### saturdays()
+
+Run the schedule on Saturdays.
+
+```typescript
+saturdays(): this
+```
+
+---
+
+### sundays()
+
+Run the schedule on Sundays.
+
+```typescript
+sundays(): this
+```
+
+---
+
+### days()
+
+Run the schedule on specific days of the week.
+
+```typescript
+days(days: number | number[]): this
+```
+
+<ParamField path="days" type="number | number[]" required>
+  Day(s) of the week (0 = Sunday, 6 = Saturday). Can be a single day or an array
+</ParamField>
+
+**Example**
+
+```typescript
+import scheduler from '@adonisjs/scheduler/services/main'
+
+scheduler.command('reports:weekly')
+  .dailyAt('10:00')
+  .days([scheduler.MONDAY, scheduler.WEDNESDAY, scheduler.FRIDAY])
+```
+
+---
+
+### weekly()
+
+Run the schedule once a week on Sunday at midnight.
+
+```typescript
+weekly(): this
+```
+
+---
+
+### weeklyOn()
+
+Run the schedule once a week on a specific day and time.
+
+```typescript
+weeklyOn(dayOfWeek?: number, time?: string): this
+```
+
+<ParamField path="dayOfWeek" type="number" default="1">
+  Day of the week (0-7, where 0 and 7 are Sunday)
+</ParamField>
+
+<ParamField path="time" type="string" default="'0:0'">
+  Time in 24-hour format
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('reports:weekly').weeklyOn(1, '9:00') // Monday at 9:00
+```
+
+---
+
+## Frequency Methods - Monthly
+
+### monthly()
+
+Run the schedule once a month on the first day at midnight.
+
+```typescript
+monthly(): this
+```
+
+**Example**
+
+```typescript
+scheduler.command('reports:monthly').monthly()
+```
+
+---
+
+### monthlyOn()
+
+Run the schedule once a month on a specific day and time.
+
+```typescript
+monthlyOn(dayOfMonth?: number, time?: string): this
+```
+
+<ParamField path="dayOfMonth" type="number" default="1">
+  Day of the month (1-31)
+</ParamField>
+
+<ParamField path="time" type="string" default="'0:0'">
+  Time in 24-hour format
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('billing:process').monthlyOn(15, '3:00')
+```
+
+---
+
+### twiceMonthly()
+
+Run the schedule twice a month on specific days.
+
+```typescript
+twiceMonthly(first?: number, second?: number, time?: string): this
+```
+
+<ParamField path="first" type="number" default="1">
+  First day of the month (1-31)
+</ParamField>
+
+<ParamField path="second" type="number" default="13">
+  Second day of the month (1-31)
+</ParamField>
+
+<ParamField path="time" type="string" default="'0:0'">
+  Time in 24-hour format
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('invoices:send').twiceMonthly(1, 15, '9:00')
+```
+
+---
+
+### lastDayOfMonth()
+
+Run the schedule on the last day of every month.
+
+```typescript
+lastDayOfMonth(time?: string): this
+```
+
+<ParamField path="time" type="string" default="'0:0'">
+  Time in 24-hour format
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('reports:monthly').lastDayOfMonth('23:00')
+```
+
+---
+
+### quarterly()
+
+Run the schedule once every quarter (January, April, July, October) on the first day at midnight.
+
+```typescript
+quarterly(): this
+```
+
+**Example**
+
+```typescript
+scheduler.command('reports:quarterly').quarterly()
+```
+
+---
+
+### yearly()
+
+Run the schedule once a year on January 1st at midnight.
+
+```typescript
+yearly(): this
+```
+
+**Example**
+
+```typescript
+scheduler.command('reports:annual').yearly()
+```
+
+---
+
+### yearlyOn()
+
+Run the schedule once a year on a specific date and time.
+
+```typescript
+yearlyOn(month?: number, dayOfMonth?: number, time?: string): this
+```
+
+<ParamField path="month" type="number" default="1">
+  Month (1-12)
+</ParamField>
+
+<ParamField path="dayOfMonth" type="number" default="1">
+  Day of the month (1-31)
+</ParamField>
+
+<ParamField path="time" type="string" default="'0:0'">
+  Time in 24-hour format
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('license:renew').yearlyOn(12, 31, '23:59')
+```
+
+---
+
+## Advanced Methods
+
+### cron()
+
+Define a custom cron expression for the schedule.
+
+```typescript
+cron(expression: string): this
+```
+
+<ParamField path="expression" type="string" required>
+  A cron expression with 6 fields: `seconds minutes hours dayOfMonth month dayOfWeek`
+</ParamField>
+
+**Example**
+
+```typescript
+scheduler.command('custom:task').cron('0 30 2 * * 1-5')
+// Runs at 2:30 AM on weekdays
+```
+
+---
+
+### getExpression()
+
+Get the current cron expression for the schedule.
+
+```typescript
+getExpression(): string
+```
+
+**Returns**: The current cron expression as a string
+
+**Example**
+
+```typescript
+const schedule = scheduler.command('test').everyMinute()
+console.log(schedule.getExpression()) // '0 * * * * *'
+```
+
+---
+
+## Day Constants
+
+You can use day constants for better readability when scheduling:
+
+```typescript
+import scheduler from '@adonisjs/scheduler/services/main'
+
+scheduler.command('reports:weekly')
+  .weeklyOn(scheduler.MONDAY, '9:00')
+
+scheduler.command('maintenance')
+  .dailyAt('3:00')
+  .days([scheduler.SATURDAY, scheduler.SUNDAY])
+```
+
+Available constants:
+- `SUNDAY = 0`
+- `MONDAY = 1`
+- `TUESDAY = 2`
+- `WEDNESDAY = 3`
+- `THURSDAY = 4`
+- `FRIDAY = 5`
+- `SATURDAY = 6`

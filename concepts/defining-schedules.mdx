@@ -1,0 +1,87 @@
+---
+title: Defining schedules
+description: Learn how to define scheduled tasks using the scheduler service
+---
+
+You can define scheduled tasks in your AdonisJS application using the scheduler service. The scheduler allows you to schedule both Ace commands and custom callbacks to run at specified intervals.
+
+## Importing the scheduler
+
+Import the scheduler service in your `start/scheduler.ts` file:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+```
+
+The scheduler service is automatically available after the package is configured and the application has booted.
+
+## Scheduling commands
+
+Use the `scheduler.command()` method to schedule Ace commands. You can schedule commands by their string name or by passing the command class directly.
+
+### Scheduling by command name
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler.command('inspire').everyFiveSeconds()
+```
+
+### Scheduling by command class
+
+When scheduling by command class, you can also pass arguments to the command:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import PurgeUsers from '#commands/purge_users'
+
+scheduler.command(PurgeUsers, ['30 days']).everyFiveSeconds()
+```
+
+The second parameter accepts either a single string or an array of strings that will be passed as arguments to the command.
+
+## Scheduling callbacks
+
+Use the `scheduler.call()` method to schedule custom callback functions:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler
+  .call(() => {
+    console.log('Purge DB!')
+  })
+  .weekly()
+```
+
+Callbacks can be synchronous or asynchronous. The scheduler will await asynchronous callbacks before marking the task as complete.
+
+## Chaining frequency methods
+
+Both `scheduler.command()` and `scheduler.call()` return a schedule instance that you can chain with frequency methods to define when the task should run:
+
+```ts
+scheduler.command('inspire').daily()
+scheduler.call(() => console.log('Hello')).hourly()
+scheduler.command(PurgeUsers, ['7 days']).everyMinute()
+```
+
+See the [schedule frequencies](/concepts/schedule-frequencies) documentation for a complete list of available frequency methods.
+
+## Before and after callbacks
+
+You can register callbacks to run before and after your scheduled tasks:
+
+```ts
+scheduler
+  .command('inspire')
+  .everyMinute()
+  .before(async () => {
+    console.log('About to run inspire command')
+  })
+  .after(async () => {
+    console.log('Inspire command completed')
+  })
+```
+
+Both `before()` and `after()` methods accept asynchronous functions and will be awaited during execution.

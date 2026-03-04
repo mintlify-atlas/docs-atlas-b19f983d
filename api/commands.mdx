@@ -1,0 +1,316 @@
+---
+title: CLI Commands
+description: API reference for scheduler CLI commands
+---
+
+The AdonisJS Scheduler package provides CLI commands to run, monitor, and manage scheduled tasks.
+
+## scheduler:run
+
+Starts the scheduler worker to execute scheduled tasks.
+
+```bash
+node ace scheduler:run [options]
+```
+
+### Aliases
+
+- `scheduler:work`
+- `schedule:work`
+- `schedule:run`
+
+### Options
+
+<ParamField path="--watch" type="boolean" default="false">
+  Restart the scheduler automatically when files change. Useful during development
+</ParamField>
+
+<ParamField path="--tag" type="string" default="'default'">
+  Specify which tag to run. Only schedules with this tag will be executed
+</ParamField>
+
+### Examples
+
+**Start scheduler with default settings**
+
+```bash
+node ace scheduler:run
+```
+
+**Start scheduler with file watching**
+
+```bash
+node ace scheduler:run --watch
+```
+
+This will:
+- Watch for file changes in your project
+- Automatically restart the scheduler when `.ts` or `.js` files change
+- Ignore `node_modules`, `.git`, and `build` directories
+- Add a 300ms debounce to prevent multiple restarts
+
+**Run scheduler for specific tag**
+
+```bash
+node ace scheduler:run --tag=email-queue
+```
+
+**Combine options**
+
+```bash
+node ace scheduler:run --tag=analytics --watch
+```
+
+### Behavior
+
+When you run this command:
+
+1. The application is started with the scheduler provider
+2. A Worker instance is created
+3. All schedules matching the specified tag are loaded
+4. The `onStarting` callback is executed (if registered)
+5. Tasks are scheduled according to their cron expressions
+6. The `onStarted` callback is executed (if registered)
+7. The worker runs indefinitely until stopped
+
+### Production Usage
+
+In production, you'll typically run the scheduler as a background process:
+
+**Using PM2**
+
+```bash
+pm2 start "node ace scheduler:run" --name scheduler
+```
+
+**Using systemd**
+
+Create a service file `/etc/systemd/system/scheduler.service`:
+
+```ini
+[Unit]
+Description=AdonisJS Scheduler
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/app
+ExecStart=/usr/bin/node ace scheduler:run
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then enable and start:
+
+```bash
+sudo systemctl enable scheduler
+sudo systemctl start scheduler
+```
+
+**Using Docker**
+
+```dockerfile
+# In your Dockerfile
+CMD ["node", "ace", "scheduler:run"]
+```
+
+Or in docker-compose.yml:
+
+```yaml
+services:
+  scheduler:
+    build: .
+    command: node ace scheduler:run
+    restart: always
+```
+
+---
+
+## scheduler:list
+
+Display all registered scheduled tasks with their cron expressions and next execution times.
+
+```bash
+node ace scheduler:list [options]
+```
+
+### Options
+
+<ParamField path="--tag" type="string">
+  Filter schedules by tag. Only schedules with this tag will be displayed
+</ParamField>
+
+### Examples
+
+**List all schedules**
+
+```bash
+node ace scheduler:list
+```
+
+Output:
+```
+ 0 * * * * *    node ace mail:send....................Next Due: in 23 seconds
+ 0 0 * * * *    node ace reports:daily................Next Due: in 4 hours
+ 0 */5 * * * *  Closure #1............................Next Due: in 2 minutes
+```
+
+**Filter by tag**
+
+```bash
+node ace scheduler:list --tag=email-queue
+```
+
+Output:
+```
+ 0 * * * * *    node ace emails:send..................Next Due: in 45 seconds
+ 0 */2 * * * *  node ace notifications:dispatch.......Next Due: in 1 minute
+```
+
+### Output Format
+
+The command displays schedules in a formatted table with three columns:
+
+1. **Cron Expression** (yellow): The cron expression defining when the task runs
+2. **Command** (default color): The command name or closure reference
+   - For commands: `node ace <command>` with arguments in cyan
+   - For callbacks: `Closure #<index>`
+3. **Next Due** (dim): When the task will run next
+   - Shows relative time (e.g., "in 5 minutes", "in 2 hours")
+   - Shows "Disabled" for skipped schedules
+
+### Understanding the Output
+
+**Cron Expression Format**
+
+The package uses 6-field cron expressions:
+
+```
+seconds minutes hours dayOfMonth month dayOfWeek
+```
+
+Examples:
+- `0 * * * * *` - Every minute at :00 seconds
+- `0 0 * * * *` - Every hour at :00
+- `0 0 0 * * *` - Every day at midnight
+- `0 30 9 * * 1-5` - Weekdays at 9:30 AM
+
+**Next Due Time**
+
+The "Next Due" time is calculated based on:
+- Current time
+- Schedule's cron expression
+- Configured timezone (if any)
+- Enabled/disabled status
+
+### Use Cases
+
+**Verify schedules are registered**
+
+```bash
+node ace scheduler:list
+```
+
+Use this after updating your scheduler configuration to ensure tasks are properly registered.
+
+**Debug scheduling issues**
+
+```bash
+node ace scheduler:list
+```
+
+Check if:
+- The cron expression is correct
+- The schedule is enabled (not showing "Disabled")
+- The next execution time is as expected
+
+**List schedules by environment**
+
+Combine with tag filtering:
+
+```bash
+# Development tasks
+node ace scheduler:list --tag=development
+
+# Production tasks
+node ace scheduler:list --tag=production
+```
+
+---
+
+## Running Multiple Workers
+
+You can run multiple scheduler workers with different tags simultaneously:
+
+**Terminal 1 - Email queue**
+```bash
+node ace scheduler:run --tag=email-queue
+```
+
+**Terminal 2 - Analytics**
+```bash
+node ace scheduler:run --tag=analytics
+```
+
+**Terminal 3 - Default tasks**
+```bash
+node ace scheduler:run
+```
+
+Each worker runs independently and executes only the schedules matching its tag.
+
+---
+
+## Graceful Shutdown
+
+The scheduler:run command handles graceful shutdown automatically:
+
+- **SIGTERM**: Stops all running tasks before exiting
+- **SIGINT** (Ctrl+C): Stops all running tasks before exiting
+
+When a shutdown signal is received:
+1. New task executions are prevented
+2. Currently running tasks are allowed to complete
+3. The worker stops all cron schedules
+4. The process exits cleanly
+
+**Example with PM2:**
+
+```bash
+pm2 stop scheduler    # Sends SIGTERM
+pm2 restart scheduler  # Graceful restart
+```
+
+---
+
+## Debugging
+
+**Check if schedules are loaded**
+
+```bash
+node ace scheduler:list
+```
+
+**Run with logging**
+
+```bash
+DEBUG=scheduler:* node ace scheduler:run
+```
+
+**Watch mode for development**
+
+```bash
+node ace scheduler:run --watch
+```
+
+This restarts the scheduler when you modify schedule definitions, making development faster.
+
+**Test a specific tag**
+
+```bash
+node ace scheduler:list --tag=test
+node ace scheduler:run --tag=test
+```

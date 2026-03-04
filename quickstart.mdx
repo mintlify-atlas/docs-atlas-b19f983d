@@ -1,80 +1,354 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Create your first scheduled task with AdonisJS Scheduler
 ---
 
-## Get started in three steps
+This guide will walk you through creating your first scheduled task, from defining a simple schedule to running it in production.
 
-Get your documentation site running locally and make your first customization.
+## Create your first schedule
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Define a scheduled callback">
+    Open the `start/scheduler.ts` file and add a simple scheduled callback:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```ts start/scheduler.ts
+    import scheduler from 'adonisjs-scheduler/services/main'
 
-### Step 2: Deploy your changes
+    scheduler.call(() => {
+      console.log('Task running at:', new Date().toISOString())
+    }).everyMinute()
+    ```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    This schedule will execute the callback function every minute.
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Run the scheduler">
+    Start the scheduler using the Ace command:
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    node ace scheduler:run
+    ```
 
-### Step 3: Go live
+    You should see the message printed to the console every minute.
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+    <Info>
+      During development, use the `--watch` flag to automatically restart the scheduler when files change:
+      ```bash
+      node ace scheduler:run --watch
+      ```
+    </Info>
+  </Step>
+
+  <Step title="Create a scheduled command">
+    For more complex tasks, create a dedicated Ace command. Generate a new command:
+
+    ```bash
+    node ace make:command cleanup_old_logs
+    ```
+
+    Implement the command logic:
+
+    ```ts commands/cleanup_old_logs.ts
+    import { BaseCommand } from '@adonisjs/core/ace'
+    import { CommandOptions } from '@adonisjs/core/types/ace'
+
+    export default class CleanupOldLogs extends BaseCommand {
+      static commandName = 'cleanup:old:logs'
+      static description = 'Clean up log files older than 30 days'
+
+      static options: CommandOptions = {
+        startApp: true,
+      }
+
+      async run() {
+        this.logger.info('Cleaning up old logs...')
+        
+        // Your cleanup logic here
+        // Example: Delete logs older than 30 days
+        
+        this.logger.success('Cleanup completed!')
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Schedule the command">
+    Add the command to your scheduler configuration:
+
+    ```ts start/scheduler.ts
+    import scheduler from 'adonisjs-scheduler/services/main'
+    import CleanupOldLogs from '#commands/cleanup_old_logs'
+
+    scheduler.command(CleanupOldLogs).daily()
+    ```
+
+    The command will now run every day at midnight.
+  </Step>
+
+  <Step title="Schedule with arguments">
+    If your command accepts arguments, pass them when scheduling:
+
+    ```ts commands/purge_users.ts
+    import { BaseCommand, args } from '@adonisjs/core/ace'
+    import { CommandOptions } from '@adonisjs/core/types/ace'
+
+    export default class PurgeUsers extends BaseCommand {
+      static commandName = 'purge:users'
+      static description = 'Purge inactive users'
+
+      static options: CommandOptions = {
+        startApp: true,
+      }
+
+      @args.string()
+      declare olderThan: string
+
+      async run() {
+        this.logger.info(`Purging users older than ${this.olderThan}`)
+        // Your purge logic here
+      }
+    }
+    ```
+
+    Schedule it with arguments:
+
+    ```ts start/scheduler.ts
+    import scheduler from 'adonisjs-scheduler/services/main'
+    import PurgeUsers from '#commands/purge_users'
+
+    scheduler.command(PurgeUsers, ['30 days']).weekly()
+    ```
+  </Step>
+</Steps>
+
+## Common scheduling patterns
+
+Here are some practical examples of scheduling tasks:
+
+<CodeGroup>
+  ```ts Every minute
+  scheduler.command('send:notifications').everyMinute()
+  ```
+
+  ```ts Every 5 minutes
+  scheduler.command('check:health').everyFiveMinutes()
+  ```
+
+  ```ts Every hour at minute 30
+  scheduler.command('process:queue').hourlyAt(30)
+  ```
+
+  ```ts Daily at specific time
+  scheduler.command('send:reports').dailyAt('09:00')
+  ```
+
+  ```ts Twice daily
+  scheduler.command('backup:database').twiceDaily(1, 13)
+  ```
+
+  ```ts Weekly on Monday
+  scheduler.command('send:weekly:summary').weeklyOn(1, '08:00')
+  ```
+
+  ```ts Only on weekdays
+  scheduler.command('business:task').dailyAt('09:00').weekdays()
+  ```
+
+  ```ts Custom cron expression
+  scheduler.command('custom:task').cron('*/15 * * * *')
+  ```
+</CodeGroup>
+
+## Advanced features
+
+### Prevent overlapping executions
+
+If a task might take longer than its schedule interval, prevent overlapping executions:
+
+```ts start/scheduler.ts
+scheduler.command('long:running:task')
+  .everyFiveMinutes()
+  .withoutOverlapping()
+```
+
+You can also specify a lock expiration time (in milliseconds):
+
+```ts start/scheduler.ts
+scheduler.command('long:running:task')
+  .everyFiveMinutes()
+  .withoutOverlapping(30_000) // Lock expires after 30 seconds
+```
+
+### Using decorators
+
+Define schedules directly on command classes using the `@schedule` decorator:
+
+```ts commands/purge_users.ts
+import { BaseCommand, args } from '@adonisjs/core/ace'
+import { schedule } from 'adonisjs-scheduler'
+
+@schedule('0 0 * * *') // Midnight daily
+@schedule((s) => s.everyFiveSeconds().immediate(), ['7 days'])
+export default class PurgeUsers extends BaseCommand {
+  static commandName = 'purge:users'
+
+  @args.string()
+  declare olderThan: string
+
+  async run() {
+    this.logger.info(`Purging users older than ${this.olderThan}`)
+  }
+}
+```
+
+### Organizing with tags
+
+Group related schedules using tags:
+
+```ts start/scheduler.ts
+scheduler.withTag(() => {
+  scheduler.command('send:notifications').everyMinute()
+  scheduler.command('process:queue').everyFiveMinutes()
+}, 'background-jobs')
+
+// Run only specific tags
+// node ace scheduler:run --tag background-jobs
+```
+
+### Lifecycle hooks
+
+Execute code before and after scheduled tasks:
+
+```ts start/scheduler.ts
+scheduler.command('backup:database')
+  .daily()
+  .before(async () => {
+    console.log('Starting backup...')
+  })
+  .after(async () => {
+    console.log('Backup completed!')
+  })
+```
+
+### Timezone support
+
+Run tasks in specific timezones:
+
+```ts start/scheduler.ts
+scheduler.command('send:reports')
+  .dailyAt('09:00')
+  .timezone('America/New_York')
+```
+
+## Running in production
+
+For production environments, use a process manager to keep the scheduler running:
+
+### Using PM2
+
+```json ecosystem.config.json
+{
+  "apps": [
+    {
+      "name": "scheduler",
+      "script": "./ace.js",
+      "args": "scheduler:run",
+      "instances": 1,
+      "autorestart": true,
+      "watch": false,
+      "max_memory_restart": "1G"
+    }
+  ]
+}
+```
+
+Start the scheduler:
+
+```bash
+pm2 start ecosystem.config.json
+```
+
+### Using systemd
+
+Create a systemd service file:
+
+```ini /etc/systemd/system/scheduler.service
+[Unit]
+Description=AdonisJS Scheduler
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/app
+ExecStart=/usr/bin/node ace.js scheduler:run
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+
+```bash
+sudo systemctl enable scheduler
+sudo systemctl start scheduler
+```
+
+### Using Docker
+
+Add a scheduler service to your `docker-compose.yml`:
+
+```yaml docker-compose.yml
+services:
+  scheduler:
+    build: .
+    command: node ace scheduler:run
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - database
+```
+
+## Programmatic usage
+
+For advanced use cases, you can manually control the scheduler worker:
+
+```ts
+import { Worker } from 'adonisjs-scheduler'
+import app from '@adonisjs/core/services/app'
+
+const worker = new Worker(app)
+
+// Handle graceful shutdown
+app.terminating(async () => {
+  await worker.stop()
+})
+
+// Start the worker
+await worker.start()
+```
+
+<Warning>
+  When using programmatic initialization, ensure the scheduler provider is enabled for your environment in `adonisrc.ts`.
+</Warning>
+
+## Listing schedules
+
+View all registered schedules:
+
+```bash
+node ace scheduler:list
+```
+
+This command displays all scheduled tasks with their frequencies and configurations.
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you've created your first scheduled tasks, explore more advanced features:
 
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+- Learn about all available [schedule frequency options](/concepts/schedule-frequencies)
+- Discover [lifecycle hooks](/guides/lifecycle-hooks) for before/after callbacks
+- Explore [overlap prevention](/concepts/overlapping-prevention) strategies
+- Configure [timezone support](/guides/timezones) for international applications

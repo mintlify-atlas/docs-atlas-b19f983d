@@ -1,0 +1,212 @@
+---
+title: Timezones
+description: Configure timezone-aware scheduled tasks in AdonisJS Scheduler
+---
+
+By default, scheduled tasks execute based on your server's system timezone. You can configure individual tasks to run according to a specific timezone using the `.timezone()` method.
+
+## Setting a timezone
+
+Use the `.timezone()` method to specify a timezone for a scheduled task:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler
+  .command('reports:generate')
+  .dailyAt('9:00')
+  .timezone('America/New_York')
+```
+
+This task will execute at 9:00 AM Eastern Time, regardless of your server's timezone.
+
+## Timezone format
+
+The scheduler uses timezone identifiers from the [IANA Time Zone Database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones). Common examples include:
+
+- `America/New_York` - Eastern Time (US)
+- `America/Chicago` - Central Time (US)
+- `America/Los_Angeles` - Pacific Time (US)
+- `Europe/London` - British Time
+- `Europe/Paris` - Central European Time
+- `Asia/Tokyo` - Japan Standard Time
+- `Australia/Sydney` - Australian Eastern Time
+- `UTC` - Coordinated Universal Time
+
+<Warning>
+Avoid using abbreviations like "EST" or "PST". Always use full IANA timezone identifiers for accurate daylight saving time handling.
+</Warning>
+
+## Examples
+
+### Daily reports at different timezones
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+// Generate US report at 9 AM Eastern Time
+scheduler
+  .command('reports:us')
+  .dailyAt('9:00')
+  .timezone('America/New_York')
+
+// Generate European report at 9 AM Central European Time
+scheduler
+  .command('reports:europe')
+  .dailyAt('9:00')
+  .timezone('Europe/Paris')
+
+// Generate Asian report at 9 AM Japan Standard Time
+scheduler
+  .command('reports:asia')
+  .dailyAt('9:00')
+  .timezone('Asia/Tokyo')
+```
+
+### Business hours in a specific timezone
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+// Process orders during London business hours
+scheduler
+  .call(() => {
+    console.log('Processing orders...')
+  })
+  .everyFifteenMinutes()
+  .between('9:00', '17:00')
+  .weekdays()
+  .timezone('Europe/London')
+```
+
+### Multi-region deployments
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import env from '#start/env'
+
+// Configure timezone based on deployment region
+const timezone = env.get('APP_TIMEZONE', 'UTC')
+
+scheduler
+  .command('cleanup:temp')
+  .daily()
+  .timezone(timezone)
+```
+
+### Midnight tasks in different regions
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+// Run maintenance at midnight in each region
+scheduler
+  .command('maintenance:us')
+  .daily() // Runs at 00:00
+  .timezone('America/New_York')
+  .tag('maintenance')
+
+scheduler
+  .command('maintenance:europe')
+  .daily() // Runs at 00:00
+  .timezone('Europe/London')
+  .tag('maintenance')
+
+scheduler
+  .command('maintenance:asia')
+  .daily() // Runs at 00:00
+  .timezone('Asia/Singapore')
+  .tag('maintenance')
+```
+
+## How timezone affects scheduling
+
+When you set a timezone on a schedule, the cron expression is evaluated in that timezone's context:
+
+```ts
+scheduler
+  .command('backup:database')
+  .dailyAt('2:00')
+  .timezone('America/New_York')
+```
+
+This task executes at 2:00 AM Eastern Time. If your server is in UTC, the actual execution time will be:
+- 7:00 AM UTC during Eastern Standard Time (winter)
+- 6:00 AM UTC during Eastern Daylight Time (summer)
+
+The scheduler automatically handles daylight saving time transitions.
+
+## Daylight saving time
+
+The timezone setting ensures your tasks correctly handle daylight saving time transitions:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+// This task always runs at 3:00 AM local time in New York,
+// even during DST transitions in March and November
+scheduler
+  .command('sync:data')
+  .dailyAt('3:00')
+  .timezone('America/New_York')
+```
+
+<Note>
+During the "fall back" transition when clocks move backward, a task scheduled at the repeated hour may execute twice. During the "spring forward" transition, a task scheduled at the skipped hour will execute at the next available time.
+</Note>
+
+## UTC scheduling
+
+For tasks that should run at absolute times regardless of local time zones, use UTC:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+// API rate limit resets at midnight UTC
+scheduler
+  .call(() => {
+    console.log('Reset API rate limits')
+  })
+  .daily()
+  .timezone('UTC')
+```
+
+## Testing timezone-aware schedules
+
+When testing timezone-aware schedules, remember that the schedule evaluates in the specified timezone:
+
+```ts
+import { test } from '@japa/runner'
+import scheduler from 'adonisjs-scheduler/services/main'
+
+test.group('Scheduler', () => {
+  test('schedules report at correct time', ({ assert }) => {
+    const schedule = scheduler
+      .command('reports:daily')
+      .dailyAt('9:00')
+      .timezone('America/New_York')
+
+    assert.equal(schedule.config.timezone, 'America/New_York')
+  })
+})
+```
+
+## Combining with other methods
+
+The `.timezone()` method can be chained with any schedule frequency methods:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+
+scheduler
+  .command('process:queue')
+  .everyFiveMinutes()
+  .timezone('Europe/London')
+  .withoutOverlapping()
+
+scheduler
+  .call(() => console.log('Weekly report'))
+  .weeklyOn(1, '10:00') // Mondays at 10:00 AM
+  .timezone('Asia/Tokyo')
+  .tag('reports')
+```

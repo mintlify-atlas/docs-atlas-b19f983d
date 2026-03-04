@@ -1,0 +1,200 @@
+---
+title: Worker
+description: API reference for the Worker class
+---
+
+The `Worker` class is responsible for executing scheduled tasks at their defined intervals. It manages the lifecycle of scheduled jobs and handles the actual execution of commands and callbacks.
+
+## Constructor
+
+```typescript
+constructor(app: ApplicationService)
+```
+
+<ParamField path="app" type="ApplicationService" required>
+  The AdonisJS application service instance
+</ParamField>
+
+**Example**
+
+```typescript
+import { Worker } from '@adonisjs/scheduler'
+import app from '@adonisjs/core/services/app'
+
+const worker = new Worker(app)
+```
+
+## Properties
+
+### tasks
+
+```typescript
+tasks: cron.ScheduledTask[]
+```
+
+An array of active cron scheduled tasks. These are managed internally by the Worker.
+
+---
+
+### booted
+
+```typescript
+booted: boolean
+```
+
+Indicates whether the worker has been booted. The worker boots automatically when `start()` is called for the first time.
+
+---
+
+## Methods
+
+### start()
+
+Starts the worker and begins executing scheduled tasks for a specific tag.
+
+```typescript
+async start(tag?: string): Promise<void>
+```
+
+<ParamField path="tag" type="string" default="'default'">
+  The tag to filter schedules by. Only schedules with this tag will be executed
+</ParamField>
+
+This method:
+1. Boots the worker if not already booted
+2. Loads the scheduler from the container
+3. Calls `onStarting` callback if registered
+4. Schedules all tasks matching the specified tag
+5. Calls `onStarted` callback if registered
+6. Logs that the worker has started successfully
+
+**Example**
+
+```typescript
+import { Worker } from '@adonisjs/scheduler'
+import app from '@adonisjs/core/services/app'
+
+const worker = new Worker(app)
+
+// Start with default tag
+await worker.start()
+
+// Start with custom tag
+await worker.start('email-queue')
+```
+
+---
+
+### stop()
+
+Stops all running scheduled tasks.
+
+```typescript
+async stop(): Promise<void>
+```
+
+This method stops all active cron tasks, effectively shutting down the scheduler.
+
+**Example**
+
+```typescript
+import { Worker } from '@adonisjs/scheduler'
+import app from '@adonisjs/core/services/app'
+
+const worker = new Worker(app)
+await worker.start()
+
+// Later, stop the worker
+await worker.stop()
+```
+
+---
+
+### boot()
+
+Initializes the worker by loading the scheduler and command loaders. This method is called automatically by `start()` and typically doesn't need to be called manually.
+
+```typescript
+async boot(): Promise<void>
+```
+
+This method:
+1. Returns early if already booted
+2. Loads the scheduler from the container
+3. Calls `scheduler.boot()` to initialize schedules
+4. Creates command loaders for executing commands
+5. Sets `booted` to `true`
+
+---
+
+## Usage Example
+
+Here's a complete example of using the Worker class in a custom script:
+
+```typescript
+import { Worker } from '@adonisjs/scheduler'
+import app from '@adonisjs/core/services/app'
+
+// Create and start worker
+const worker = new Worker(app)
+
+// Handle graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('Received SIGTERM, stopping worker...')
+  await worker.stop()
+  process.exit(0)
+})
+
+process.on('SIGINT', async () => {
+  console.log('Received SIGINT, stopping worker...')
+  await worker.stop()
+  process.exit(0)
+})
+
+// Start the worker
+await worker.start('default')
+
+console.log('Worker is running...')
+```
+
+---
+
+## Multiple Workers
+
+You can run multiple workers with different tags simultaneously:
+
+```typescript
+import { Worker } from '@adonisjs/scheduler'
+import app from '@adonisjs/core/services/app'
+
+// Worker for email tasks
+const emailWorker = new Worker(app)
+await emailWorker.start('email-queue')
+
+// Worker for analytics tasks
+const analyticsWorker = new Worker(app)
+await analyticsWorker.start('analytics')
+
+// Worker for default tasks
+const defaultWorker = new Worker(app)
+await defaultWorker.start('default')
+```
+
+---
+
+## Integration with AdonisJS
+
+In most cases, you won't create Worker instances directly. Instead, use the CLI commands provided by the package:
+
+```bash
+# Start worker with default tag
+node ace scheduler:run
+
+# Start worker with custom tag
+node ace scheduler:run --tag=email-queue
+
+# Start worker with file watching (restarts on changes)
+node ace scheduler:run --watch
+```
+
+The `scheduler:run` command creates a Worker instance internally and manages its lifecycle automatically.

@@ -1,0 +1,607 @@
+---
+title: Troubleshooting
+description: Common issues and debugging tips for AdonisJS Scheduler
+---
+
+This guide helps you diagnose and resolve common issues with AdonisJS Scheduler.
+
+## Checking Scheduler Status
+
+### List All Scheduled Tasks
+
+Use the `scheduler:list` command to verify your schedules are registered:
+
+```bash
+node ace scheduler:list
+```
+
+This displays all registered schedules with their cron expressions and next run times:
+
+```
+ * * * * * *  node ace inspire ..................... Next Due: in a few seconds
+ 0 0 * * 0    Closure #1 ............................. Next Due: in 5 days
+```
+
+### Filter by Tag
+
+List schedules for a specific tag:
+
+```bash
+node ace scheduler:list --tag=maintenance
+```
+
+<Tip>
+Use `scheduler:list` as your first debugging step to confirm your schedules are properly registered.
+</Tip>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="Scheduler not running tasks" icon="triangle-exclamation">
+    **Symptoms:** Tasks are registered but never execute.
+
+    **Possible causes and solutions:**
+
+    1. **Scheduler worker not started**
+       ```bash
+       # Make sure the scheduler is running
+       node ace scheduler:run
+       ```
+
+    2. **Provider not registered**
+       
+       Verify your `adonisrc.ts` includes the provider:
+       ```typescript
+       providers: [
+         () => import('adonisjs-scheduler/scheduler_provider')
+       ]
+       ```
+
+    3. **Preload file not configured**
+       
+       Check that the preload file is registered:
+       ```typescript
+       preloads: [
+         () => import('#start/scheduler')
+       ]
+       ```
+
+    4. **Task is disabled**
+       
+       Check if the schedule is skipped:
+       ```typescript
+       scheduler
+         .call(() => {})
+         .everyMinute()
+         .skip(false) // Should be false or removed
+       ```
+
+    5. **Wrong tag**
+       
+       If running with a specific tag, ensure your schedule has the same tag:
+       ```bash
+       # Running with tag
+       node ace scheduler:run --tag=production
+       ```
+       ```typescript
+       // Schedule must have matching tag
+       scheduler
+         .call(() => {})
+         .everyMinute()
+         .tag('production')
+       ```
+  </Accordion>
+
+  <Accordion title="Tasks running multiple times" icon="copy">
+    **Symptoms:** The same task executes more than once at each scheduled time.
+
+    **Possible causes and solutions:**
+
+    1. **Multiple scheduler workers running**
+       
+       Check if you have multiple instances:
+       ```bash
+       # Check running processes
+       ps aux | grep "scheduler:run"
+       ```
+       
+       Stop duplicate processes and ensure only one worker is running per tag.
+
+    2. **Schedule registered multiple times**
+       
+       Verify your `start/scheduler.ts` doesn't register the same schedule twice:
+       ```typescript
+       // Bad: Registering twice
+       scheduler.call(() => {}).everyMinute()
+       scheduler.call(() => {}).everyMinute() // Duplicate!
+       
+       // Good: Register once
+       scheduler.call(() => {}).everyMinute()
+       ```
+
+    3. **Using decorator without proper setup**
+       
+       If using `@schedule` decorator, ensure the command is properly exported and loaded.
+  </Accordion>
+
+  <Accordion title="Tasks not preventing overlap" icon="lock">
+    **Symptoms:** Long-running tasks execute concurrently despite using `withoutOverlapping()`.
+
+    **Solution:**
+
+    Verify the overlap prevention is configured correctly:
+
+    ```typescript
+    scheduler
+      .call(async () => {
+        // Long-running task
+        await longOperation()
+      })
+      .everyMinute()
+      .withoutOverlapping(5 * 60 * 1000) // 5 minutes lock
+    ```
+
+    **Check the logs:**
+    ```
+    WARN: Command 0-myCommand-[] is busy
+    ```
+
+    If you see this warning, overlap prevention is working correctly. The task is being skipped because the previous execution is still running.
+
+    <Note>
+    The `expiresAt` parameter should be longer than your task's expected execution time.
+    </Note>
+  </Accordion>
+
+  <Accordion title="Decorator schedules not working" icon="at">
+    **Symptoms:** Commands with `@schedule` decorator don't execute.
+
+    **Possible causes and solutions:**
+
+    1. **Commands not loaded**
+       
+       Ensure your commands are registered in `adonisrc.ts`:
+       ```typescript
+       commands: [
+         () => import('./commands/index.js'),
+         () => import('adonisjs-scheduler/commands')
+       ]
+       ```
+
+    2. **Scheduler not booted**
+       
+       The scheduler must call `boot()` to load decorated commands:
+       ```typescript
+       const scheduler = await app.container.make('scheduler')
+       await scheduler.boot() // Required for decorators
+       ```
+
+    3. **Decorator syntax error**
+       
+       Verify decorator usage:
+       ```typescript
+       import { BaseCommand } from '@adonisjs/core/ace'
+       import { schedule } from 'adonisjs-scheduler'
+       
+       @schedule('* * * * *')
+       export default class MyCommand extends BaseCommand {
+         async run() {
+           // Command logic
+         }
+       }
+       ```
+  </Accordion>
+
+  <Accordion title="Timezone issues" icon="globe">
+    **Symptoms:** Tasks run at unexpected times.
+
+    **Solution:**
+
+    1. **Verify timezone configuration:**
+       ```typescript
+       scheduler
+         .call(() => {})
+         .daily()
+         .timezone('America/New_York')
+       ```
+
+    2. **Check server timezone:**
+       ```bash
+       # Linux/Mac
+       date +"%Z %z"
+       
+       # Node.js
+       node -e "console.log(Intl.DateTimeFormat().resolvedOptions().timeZone)"
+       ```
+
+    3. **Use IANA timezone names:**
+       ```typescript
+       // Good: IANA timezone
+       .timezone('America/New_York')
+       .timezone('Europe/London')
+       .timezone('Asia/Tokyo')
+       
+       // Bad: Abbreviations
+       .timezone('EST') // Don't use
+       .timezone('PST') // Don't use
+       ```
+
+    <Warning>
+    Timezone abbreviations (EST, PST, etc.) are ambiguous and not supported. Always use IANA timezone names.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="Memory leaks" icon="memory">
+    **Symptoms:** Scheduler process memory usage grows over time.
+
+    **Possible causes and solutions:**
+
+    1. **Tasks not cleaning up resources**
+       ```typescript
+       scheduler.call(async () => {
+         const connection = await createConnection()
+         
+         try {
+           await doWork(connection)
+         } finally {
+           await connection.close() // Always close resources
+         }
+       }).everyMinute()
+       ```
+
+    2. **Accumulating data in memory**
+       ```typescript
+       // Bad: Accumulates data
+       const results = []
+       scheduler.call(() => {
+         results.push(new Data()) // Memory leak!
+       }).everyMinute()
+       
+       // Good: Process and clear
+       scheduler.call(async () => {
+         const data = await fetchData()
+         await processData(data)
+         // data is garbage collected after execution
+       }).everyMinute()
+       ```
+
+    3. **Monitor memory usage**
+       ```bash
+       # Check process memory
+       ps aux | grep "scheduler:run"
+       ```
+  </Accordion>
+
+  <Accordion title="Tasks failing silently" icon="exclamation-triangle">
+    **Symptoms:** Tasks stop working without any visible errors.
+
+    **Solution:**
+
+    1. **Check logs for errors**
+       
+       The worker logs errors by default:
+       ```typescript
+       import logger from '@adonisjs/core/services/logger'
+       
+       scheduler.call(async () => {
+         try {
+           await riskyOperation()
+         } catch (error) {
+           logger.error(error, 'Task failed')
+           throw error // Re-throw to log to scheduler
+         }
+       }).everyMinute()
+       ```
+
+    2. **Use lifecycle hooks for monitoring**
+       ```typescript
+       scheduler
+         .call(async () => {
+           await task()
+         })
+         .everyMinute()
+         .before(async () => {
+           logger.info('Task starting')
+         })
+         .after(async () => {
+           logger.info('Task completed')
+         })
+       ```
+
+    3. **Enable debug logging**
+       ```typescript
+       import logger from '@adonisjs/core/services/logger'
+       
+       scheduler.onStarting(async ({ tag }) => {
+         logger.info(`Starting scheduler for tag: ${tag}`)
+       })
+       
+       scheduler.onStarted(async ({ tag }) => {
+         logger.info(`Scheduler started for tag: ${tag}`)
+       })
+       ```
+  </Accordion>
+</AccordionGroup>
+
+## Debugging Tips
+
+### Enable Debug Mode
+
+Increase logging verbosity to debug issues:
+
+```typescript title="start/scheduler.ts"
+import scheduler from 'adonisjs-scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.onBoot(async () => {
+  logger.info('Scheduler booting...')
+})
+
+scheduler.onStarting(async ({ tag }) => {
+  logger.info(`Starting scheduler with tag: ${tag}`)
+})
+
+scheduler.onStarted(async ({ tag }) => {
+  const count = scheduler.items.length
+  logger.info(`Scheduler started with ${count} tasks for tag: ${tag}`)
+})
+```
+
+### Verify Cron Expression
+
+Test your cron expressions using online tools:
+
+- [crontab.guru](https://crontab.guru/) - Cron expression editor
+- [crontab.cronhub.io](https://crontab.cronhub.io/) - Cron expression tester
+
+Or use the scheduler's built-in expression methods:
+
+```typescript
+// Instead of raw cron
+scheduler.call(() => {}).cron('0 0 * * *') // Hard to read
+
+// Use expressive methods
+scheduler.call(() => {}).daily() // Clear intent
+```
+
+### Test Schedules Immediately
+
+Run tasks immediately for testing:
+
+```typescript
+scheduler
+  .call(() => {
+    console.log('Testing task')
+  })
+  .everyMinute()
+  .immediate() // Runs immediately on start
+```
+
+### Check Schedule Configuration
+
+Inspect schedule configuration programmatically:
+
+```typescript
+import app from '@adonisjs/core/services/app'
+
+const scheduler = await app.container.make('scheduler')
+await scheduler.boot()
+
+console.log('Total schedules:', scheduler.items.length)
+
+for (const item of scheduler.items) {
+  console.log({
+    type: item.type,
+    expression: item.expression,
+    tag: item.config.tag,
+    enabled: item.config.enabled,
+    timezone: item.config.timezone,
+  })
+}
+```
+
+## Performance Issues
+
+<AccordionGroup>
+  <Accordion title="Scheduler consuming too much CPU" icon="microchip">
+    **Possible causes:**
+
+    1. **Too many schedules with high frequency**
+       ```typescript
+       // Problematic: 100+ tasks running every second
+       for (let i = 0; i < 100; i++) {
+         scheduler.call(() => {}).everySecond()
+       }
+       ```
+
+    2. **Heavy synchronous operations**
+       ```typescript
+       // Bad: Blocking operation
+       scheduler.call(() => {
+         const result = heavySync() // Blocks event loop
+       }).everySecond()
+       
+       // Good: Async operation
+       scheduler.call(async () => {
+         const result = await heavyAsync() // Non-blocking
+       }).everySecond()
+       ```
+
+    **Solutions:**
+    - Reduce schedule frequency
+    - Use asynchronous operations
+    - Optimize task logic
+    - Consider running fewer tasks per worker
+  </Accordion>
+
+  <Accordion title="Watch mode restarting too often" icon="rotate">
+    **Symptoms:** The scheduler restarts constantly in watch mode.
+
+    **Solution:**
+
+    The watch mode ignores `node_modules`, `.git`, and `build` directories by default. If it's restarting too often, check for:
+
+    1. **Files being generated in watched directories**
+       - Log files
+       - Temporary files
+       - Build artifacts
+
+    2. **Database files in project root**
+       - SQLite databases
+       - Session files
+
+    Add these to your `.gitignore` or move them outside the project directory.
+  </Accordion>
+</AccordionGroup>
+
+## Getting Help
+
+If you're still experiencing issues after trying these troubleshooting steps:
+
+### Gather Information
+
+Collect this information before asking for help:
+
+1. **Environment details:**
+   ```bash
+   node --version
+   npm --version
+   cat package.json | grep adonisjs-scheduler
+   ```
+
+2. **Scheduler configuration:**
+   ```bash
+   node ace scheduler:list
+   ```
+
+3. **Error messages:**
+   - Full error stack traces
+   - Relevant log output
+
+4. **Minimal reproduction:**
+   - Simplified code that reproduces the issue
+
+### Support Channels
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/kabbouchi/adonisjs-scheduler/issues">
+    Report bugs or request features
+  </Card>
+  <Card title="AdonisJS Discord" icon="discord" href="https://discord.gg/vDcEjq6">
+    Get help from the community
+  </Card>
+</CardGroup>
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Can I run the scheduler as part of my HTTP server?" icon="question">
+    No, the scheduler should run as a separate process. Starting it alongside your HTTP server would impact web request performance and could lead to duplicate task execution in multi-instance deployments.
+
+    Run it separately:
+    ```bash
+    # Terminal 1: HTTP server
+    node ace serve --watch
+
+    # Terminal 2: Scheduler
+    node ace scheduler:run --watch
+    ```
+  </Accordion>
+
+  <Accordion title="How do I run scheduled tasks in tests?" icon="question">
+    You can manually trigger scheduled tasks in tests:
+
+    ```typescript
+    import { test } from '@japa/runner'
+    import app from '@adonisjs/core/services/app'
+
+    test('scheduled task works', async ({ assert }) => {
+      const scheduler = await app.container.make('scheduler')
+      await scheduler.boot()
+
+      // Find your schedule
+      const schedule = scheduler.items.find(
+        (item) => item.config.tag === 'my-task'
+      )
+
+      // Execute the task logic
+      if (schedule && schedule.type === 'callback') {
+        await schedule.callback()
+      }
+
+      // Assert expected results
+      assert.isTrue(taskExecuted)
+    })
+    ```
+  </Accordion>
+
+  <Accordion title="Can I use the scheduler with Redis for distributed locking?" icon="question">
+    The built-in overlap prevention uses in-memory locking (async-lock). For distributed systems with multiple servers, you'll need to implement custom locking using Redis or another distributed lock manager:
+
+    ```typescript
+    import Redis from '@adonisjs/redis/services/main'
+    
+    scheduler
+      .call(async () => {
+        const lock = await Redis.set('task-lock', '1', 'EX', 300, 'NX')
+        
+        if (!lock) {
+          logger.info('Task already running on another server')
+          return
+        }
+        
+        try {
+          await runTask()
+        } finally {
+          await Redis.del('task-lock')
+        }
+      })
+      .everyMinute()
+    ```
+  </Accordion>
+
+  <Accordion title="How many tasks can I schedule?" icon="question">
+    There's no hard limit, but consider:
+
+    - Each schedule creates a node-cron task
+    - High-frequency schedules (every second) consume more resources
+    - Memory usage scales with the number of schedules
+
+    For reference:
+    - 100 schedules: Minimal impact
+    - 1,000 schedules: May need monitoring
+    - 10,000+ schedules: Consider alternative architecture
+
+    If you need thousands of dynamic schedules, consider a queue-based system instead.
+  </Accordion>
+
+  <Accordion title="Can I dynamically add/remove schedules at runtime?" icon="question">
+    Yes, you can add schedules programmatically:
+
+    ```typescript
+    import app from '@adonisjs/core/services/app'
+
+    const scheduler = await app.container.make('scheduler')
+    
+    // Add a new schedule
+    scheduler
+      .call(() => {
+        console.log('Dynamic task')
+      })
+      .everyMinute()
+    ```
+
+    However, removing schedules at runtime is not supported. The scheduler loads all schedules on boot and keeps them for the entire process lifecycle. To modify schedules, restart the scheduler worker.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/advanced/configuration">
+    Learn about advanced configuration options
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/scheduler">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

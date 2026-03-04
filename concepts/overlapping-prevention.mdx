@@ -1,0 +1,113 @@
+---
+title: Overlapping prevention
+description: Prevent scheduled tasks from running concurrently using withoutOverlapping
+---
+
+By default, if a scheduled task is still running when its next scheduled time arrives, the scheduler will start a new instance of that task. This can lead to multiple instances running concurrently, which may cause issues with resource contention, data corruption, or unexpected behavior.
+
+The scheduler provides the `withoutOverlapping()` method to prevent concurrent execution of scheduled tasks.
+
+## How it works
+
+When you enable overlapping prevention, the scheduler uses a locking mechanism to ensure only one instance of a task runs at a time. If a task is still running when its next scheduled time arrives, the scheduler will skip that execution and log a warning.
+
+The lock automatically expires after a configurable timeout to prevent deadlocks if a task crashes without releasing the lock.
+
+## Per-schedule overlapping prevention
+
+Apply `withoutOverlapping()` to individual scheduled tasks:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import PurgeUsers from '#commands/purge_users'
+
+scheduler
+  .command(PurgeUsers, ['30 days'])
+  .everyFiveSeconds()
+  .withoutOverlapping()
+```
+
+This ensures that if a `purge:users` command is still running when the next five-second interval arrives, the new execution will be skipped.
+
+## Configuring lock expiration
+
+By default, the lock expires after 3,600,000 milliseconds (1 hour). You can configure a custom expiration time by passing the timeout in milliseconds:
+
+```ts
+scheduler
+  .command(PurgeUsers, ['30 days'])
+  .everyFiveSeconds()
+  .withoutOverlapping(30_000) // Expire after 30 seconds
+```
+
+Set the expiration time based on the maximum expected duration of your task. If a task typically completes in 5 seconds but occasionally takes up to 30 seconds, set the expiration to at least 30,000 milliseconds.
+
+<Warning>
+If a task crashes or is forcefully terminated, the lock will remain in place until it expires. Setting an appropriate expiration time is important to prevent your task from being locked indefinitely.
+</Warning>
+
+## Global overlapping prevention
+
+Use `scheduler.withoutOverlapping()` to apply overlapping prevention to multiple schedules at once:
+
+```ts
+import scheduler from 'adonisjs-scheduler/services/main'
+import PurgeUsers from '#commands/purge_users'
+
+scheduler.withoutOverlapping(
+  () => {
+    scheduler.command('inspire').everySecond()
+    scheduler.command(PurgeUsers, ['30 days']).everyFiveSeconds()
+  },
+  { expiresAt: 30_000 }
+)
+```
+
+All schedules defined within the callback will have overlapping prevention enabled with the specified expiration time.
+
+## Using with decorators
+
+You can also enable overlapping prevention when using the `@schedule` decorator:
+
+```ts
+import { BaseCommand, args } from '@adonisjs/core/ace'
+import { schedule } from 'adonisjs-scheduler'
+
+@schedule((s) => s.everyFiveSeconds().withoutOverlapping())
+export default class PurgeUsers extends BaseCommand {
+  static commandName = 'purge:users'
+  static description = 'Purge old user records'
+
+  async run() {
+    // Long-running operation
+  }
+}
+```
+
+You can also specify a custom expiration time:
+
+```ts
+@schedule((s) => s.everyFiveSeconds().withoutOverlapping(30_000))
+```
+
+## When to use overlapping prevention
+
+Consider enabling overlapping prevention for tasks that:
+
+- Perform database migrations or schema changes
+- Process large amounts of data that may take longer than the schedule interval
+- Interact with external APIs that may be slow or unreliable
+- Modify shared resources that could be corrupted by concurrent access
+- Have unpredictable execution times
+
+For simple, fast tasks that complete well within their schedule interval, overlapping prevention may not be necessary.
+
+## Monitoring skipped executions
+
+When a scheduled execution is skipped due to overlapping prevention, the scheduler logs a warning message:
+
+```
+warn: Command 1-purge:users-30 days is busy
+```
+
+Monitor these warnings in your application logs to identify tasks that are taking longer than expected or schedules that may need adjustment.

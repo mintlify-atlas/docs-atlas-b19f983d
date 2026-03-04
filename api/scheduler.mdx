@@ -1,0 +1,264 @@
+---
+title: Scheduler
+description: API reference for the Scheduler class
+---
+
+The `Scheduler` class is the main entry point for scheduling tasks in your AdonisJS application. It provides methods to register commands and callbacks to run on a schedule.
+
+## Constructor
+
+```typescript
+constructor(app: ApplicationService)
+```
+
+<ParamField path="app" type="ApplicationService" required>
+  The AdonisJS application service instance
+</ParamField>
+
+## Properties
+
+### Day Constants
+
+The Scheduler class provides constants for days of the week:
+
+- `SUNDAY = 0`
+- `MONDAY = 1`
+- `TUESDAY = 2`
+- `WEDNESDAY = 3`
+- `THURSDAY = 4`
+- `FRIDAY = 5`
+- `SATURDAY = 6`
+
+## Methods
+
+### command()
+
+Schedule a command to run on a cron schedule.
+
+```typescript
+command(
+  name: string | typeof BaseCommand,
+  args?: string | string[]
+): ScheduleCommand
+```
+
+<ParamField path="name" type="string | typeof BaseCommand" required>
+  The command name as a string (e.g., `'mail:send'`) or the command class reference
+</ParamField>
+
+<ParamField path="args" type="string | string[]" default="[]">
+  Optional arguments to pass to the command. Can be a single string or an array of strings
+</ParamField>
+
+<ResponseField name="ScheduleCommand" type="ScheduleCommand">
+  Returns a ScheduleCommand instance that can be chained with frequency and configuration methods
+</ResponseField>
+
+**Example**
+
+```typescript
+import router from '@adonisjs/core/services/router'
+import scheduler from '@adonisjs/scheduler/services/main'
+import SendEmailsCommand from '#commands/send_emails'
+
+// Schedule by command name
+scheduler.command('mail:send').everyMinute()
+
+// Schedule by command class
+scheduler.command(SendEmailsCommand).daily()
+
+// Schedule with arguments
+scheduler.command('db:backup', ['--force']).daily()
+```
+
+---
+
+### call()
+
+Schedule a callback function to run on a cron schedule.
+
+```typescript
+call(callback: Function): ScheduleCallback
+```
+
+<ParamField path="callback" type="Function" required>
+  The callback function to execute. Can be synchronous or asynchronous
+</ParamField>
+
+<ResponseField name="ScheduleCallback" type="ScheduleCallback">
+  Returns a ScheduleCallback instance that can be chained with frequency and configuration methods
+</ResponseField>
+
+**Example**
+
+```typescript
+import scheduler from '@adonisjs/scheduler/services/main'
+import mail from '@adonisjs/mail/services/main'
+
+scheduler.call(async () => {
+  await mail.send((message) => {
+    message.to('admin@example.com')
+    message.subject('Daily Report')
+  })
+}).daily()
+```
+
+---
+
+### withoutOverlapping()
+
+Apply the `withoutOverlapping` configuration to all tasks defined within the callback.
+
+```typescript
+withoutOverlapping(
+  callback: () => void,
+  config?: { expiresAt: number }
+): void
+```
+
+<ParamField path="callback" type="() => void" required>
+  A callback function where you define tasks. All tasks defined within this callback will have `withoutOverlapping` enabled
+</ParamField>
+
+<ParamField path="config" type="{ expiresAt: number }" default="{ expiresAt: 3600000 }">
+  Configuration object with `expiresAt` property (in milliseconds) that determines when the lock expires
+</ParamField>
+
+**Example**
+
+```typescript
+import scheduler from '@adonisjs/scheduler/services/main'
+
+scheduler.withoutOverlapping(() => {
+  scheduler.command('db:backup').daily()
+  scheduler.command('reports:generate').hourly()
+}, { expiresAt: 7200000 }) // 2 hours
+```
+
+---
+
+### withTag()
+
+Apply a tag to all tasks defined within the callback.
+
+```typescript
+withTag(callback: () => void, tag: string): void
+```
+
+<ParamField path="callback" type="() => void" required>
+  A callback function where you define tasks. All tasks defined within this callback will have the specified tag
+</ParamField>
+
+<ParamField path="tag" type="string" required>
+  The tag name to apply to all tasks within the callback
+</ParamField>
+
+**Example**
+
+```typescript
+import scheduler from '@adonisjs/scheduler/services/main'
+
+scheduler.withTag(() => {
+  scheduler.command('analytics:process').everyFiveMinutes()
+  scheduler.command('reports:generate').hourly()
+}, 'analytics')
+
+scheduler.withTag(() => {
+  scheduler.command('emails:send').everyMinute()
+  scheduler.command('notifications:dispatch').everyTwoMinutes()
+}, 'communications')
+```
+
+---
+
+### onStarting()
+
+Register a callback that will be executed before the scheduler starts processing tasks for a specific tag.
+
+```typescript
+onStarting(callback: ({ tag }: { tag: string }) => void | Promise<void>): void
+```
+
+<ParamField path="callback" type="({ tag }: { tag: string }) => void | Promise<void>" required>
+  A callback function that receives an object with the tag name. Can be synchronous or asynchronous
+</ParamField>
+
+**Example**
+
+```typescript
+import scheduler from '@adonisjs/scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.onStarting(({ tag }) => {
+  logger.info(`Scheduler starting for tag: ${tag}`)
+})
+```
+
+---
+
+### onStarted()
+
+Register a callback that will be executed after the scheduler has started processing tasks for a specific tag.
+
+```typescript
+onStarted(callback: ({ tag }: { tag: string }) => void | Promise<void>): void
+```
+
+<ParamField path="callback" type="({ tag }: { tag: string }) => void | Promise<void>" required>
+  A callback function that receives an object with the tag name. Can be synchronous or asynchronous
+</ParamField>
+
+**Example**
+
+```typescript
+import scheduler from '@adonisjs/scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.onStarted(({ tag }) => {
+  logger.info(`Scheduler started successfully for tag: ${tag}`)
+})
+```
+
+---
+
+### onBoot()
+
+Register a callback that will be executed when the scheduler is booting, before loading decorator-based schedules.
+
+```typescript
+onBoot(callback: () => void | Promise<void>): void
+```
+
+<ParamField path="callback" type="() => void | Promise<void>" required>
+  A callback function to execute during boot. Can be synchronous or asynchronous
+</ParamField>
+
+**Example**
+
+```typescript
+import scheduler from '@adonisjs/scheduler/services/main'
+import logger from '@adonisjs/core/services/logger'
+
+scheduler.onBoot(async () => {
+  logger.info('Scheduler is booting...')
+  // Perform any initialization tasks
+})
+```
+
+---
+
+### boot()
+
+Initializes the scheduler by loading all commands and decorator-based schedules. This method is called automatically by the Worker.
+
+```typescript
+async boot(): Promise<void>
+```
+
+This method:
+1. Calls the `onBoot` callback if registered
+2. Loads commands from the application's commands path
+3. Loads commands defined in `.adonisrc.json`
+4. Registers all decorator-based schedules
+
+**Note**: You typically don't need to call this method manually as it's automatically invoked by the Worker.

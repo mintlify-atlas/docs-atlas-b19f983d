@@ -1,0 +1,247 @@
+---
+title: Schedule frequencies
+description: Configure when your scheduled tasks should run using frequency methods
+---
+
+The scheduler provides a fluent API for defining when your scheduled tasks should run. You can use predefined frequency methods or specify a custom cron expression.
+
+## Cron expressions
+
+For maximum flexibility, use the `cron()` method to specify a custom cron expression:
+
+```ts
+scheduler.command('inspire').cron('* * * * *')
+```
+
+The cron expression format follows the extended syntax with seconds:
+
+```
+seconds minutes hours dayOfMonth month dayOfWeek
+```
+
+## Minute-based frequencies
+
+Schedule tasks to run at minute intervals:
+
+```ts
+scheduler.command('inspire').everyMinute()
+scheduler.command('backup').everyTwoMinutes()
+scheduler.command('cleanup').everyThreeMinutes()
+scheduler.command('process').everyFourMinutes()
+scheduler.command('sync').everyFiveMinutes()
+scheduler.command('check').everyTenMinutes()
+scheduler.command('monitor').everyFifteenMinutes()
+scheduler.command('report').everyThirtyMinutes()
+```
+
+You can also use the `everyMinutes()` method with a custom interval:
+
+```ts
+scheduler.command('custom').everyMinutes(7)
+```
+
+## Second-based frequencies
+
+For more frequent execution, schedule tasks at second intervals:
+
+```ts
+scheduler.command('heartbeat').everySecond()
+scheduler.command('monitor').everyFiveSeconds()
+scheduler.command('check').everyTenSeconds()
+scheduler.command('ping').everyFifteenSeconds()
+scheduler.command('poll').everyThirtySeconds()
+```
+
+Use the `everySeconds()` method for custom intervals:
+
+```ts
+scheduler.command('custom').everySeconds(45)
+```
+
+## Hourly frequencies
+
+Schedule tasks to run every hour or at specific intervals:
+
+```ts
+scheduler.command('report').hourly()
+scheduler.command('backup').everyTwoHours()
+scheduler.command('sync').everyThreeHours()
+scheduler.command('cleanup').everyFourHours()
+scheduler.command('archive').everyFiveHours()
+scheduler.command('process').everySixHours()
+```
+
+### Running at specific minutes
+
+Use `hourlyAt()` to run a task every hour at a specific minute:
+
+```ts
+// Run at 17 minutes past every hour
+scheduler.command('backup').hourlyAt(17)
+```
+
+### Odd hours
+
+Schedule tasks to run during odd hours:
+
+```ts
+scheduler.command('maintenance').everyOddHour()
+```
+
+## Daily frequencies
+
+Schedule tasks to run daily:
+
+```ts
+// Run daily at midnight
+scheduler.command('report').daily()
+
+// Run daily at a specific time
+scheduler.command('backup').dailyAt('13:00')
+
+// Run twice daily at specific hours
+scheduler.command('sync').twiceDaily(1, 13)
+
+// Run twice daily at specific hours and minutes
+scheduler.command('cleanup').twiceDailyAt(1, 13, 15)
+```
+
+### Weekdays and weekends
+
+Restrict tasks to weekdays or weekends:
+
+```ts
+scheduler.command('business-report').daily().weekdays()
+scheduler.command('weekend-maintenance').daily().weekends()
+```
+
+### Specific days
+
+Schedule tasks to run on specific days of the week:
+
+```ts
+scheduler.command('monday-report').daily().mondays()
+scheduler.command('tuesday-sync').daily().tuesdays()
+scheduler.command('wednesday-backup').daily().wednesdays()
+scheduler.command('thursday-cleanup').daily().thursdays()
+scheduler.command('friday-archive').daily().fridays()
+scheduler.command('saturday-maintenance').daily().saturdays()
+scheduler.command('sunday-report').daily().sundays()
+```
+
+## Weekly frequencies
+
+Schedule tasks to run weekly:
+
+```ts
+// Run every Sunday at midnight
+scheduler.command('weekly-report').weekly()
+
+// Run every Monday at 8:00
+scheduler.command('weekly-sync').weeklyOn(1, '8:00')
+```
+
+The `weeklyOn()` method accepts a day of the week (0 = Sunday, 6 = Saturday) and an optional time.
+
+## Monthly frequencies
+
+Schedule tasks to run monthly:
+
+```ts
+// Run on the first day of every month at midnight
+scheduler.command('monthly-report').monthly()
+
+// Run on the 4th of every month at 15:00
+scheduler.command('monthly-backup').monthlyOn(4, '15:00')
+
+// Run twice per month
+scheduler.command('bi-monthly').twiceMonthly(1, 16, '13:00')
+
+// Run on the last day of the month
+scheduler.command('month-end').lastDayOfMonth('15:00')
+```
+
+## Quarterly and yearly frequencies
+
+Schedule tasks to run quarterly or yearly:
+
+```ts
+// Run on the first day of every quarter at midnight
+scheduler.command('quarterly-report').quarterly()
+
+// Run every quarter on the 4th at 14:00
+scheduler.command('quarterly-review').quarterlyOn(4, '14:00')
+
+// Run on the first day of every year at midnight
+scheduler.command('yearly-report').yearly()
+
+// Run every year on June 1st at 17:00
+scheduler.command('yearly-celebration').yearlyOn(6, 1, '17:00')
+```
+
+## Timezone configuration
+
+By default, scheduled tasks run in your server's timezone. Use the `timezone()` method to specify a different timezone:
+
+```ts
+scheduler
+  .command('us-report')
+  .daily()
+  .timezone('America/New_York')
+```
+
+The timezone should be a valid IANA timezone identifier.
+
+## Frequency reference
+
+| Method | Description |
+| --- | --- |
+| `.cron('* * * * *')` | Run on a custom cron schedule |
+| `.everySecond()` | Run every second |
+| `.everySeconds(n)` | Run every n seconds |
+| `.everyFiveSeconds()` | Run every five seconds |
+| `.everyTenSeconds()` | Run every ten seconds |
+| `.everyFifteenSeconds()` | Run every fifteen seconds |
+| `.everyThirtySeconds()` | Run every thirty seconds |
+| `.everyMinute()` | Run every minute |
+| `.everyMinutes(n)` | Run every n minutes |
+| `.everyTwoMinutes()` | Run every two minutes |
+| `.everyThreeMinutes()` | Run every three minutes |
+| `.everyFourMinutes()` | Run every four minutes |
+| `.everyFiveMinutes()` | Run every five minutes |
+| `.everyTenMinutes()` | Run every ten minutes |
+| `.everyFifteenMinutes()` | Run every fifteen minutes |
+| `.everyThirtyMinutes()` | Run every thirty minutes |
+| `.hourly()` | Run every hour |
+| `.hourlyAt(17)` | Run every hour at 17 minutes past |
+| `.everyHours(n)` | Run every n hours |
+| `.everyOddHour()` | Run every odd hour |
+| `.everyTwoHours()` | Run every two hours |
+| `.everyThreeHours()` | Run every three hours |
+| `.everyFourHours()` | Run every four hours |
+| `.everyFiveHours()` | Run every five hours |
+| `.everySixHours()` | Run every six hours |
+| `.daily()` | Run every day at midnight |
+| `.dailyAt('13:00')` | Run every day at 13:00 |
+| `.twiceDaily(1, 13)` | Run daily at 1:00 and 13:00 |
+| `.twiceDailyAt(1, 13, 15)` | Run daily at 1:15 and 13:15 |
+| `.weekdays()` | Constrain to weekdays |
+| `.weekends()` | Constrain to weekends |
+| `.mondays()` | Constrain to Mondays |
+| `.tuesdays()` | Constrain to Tuesdays |
+| `.wednesdays()` | Constrain to Wednesdays |
+| `.thursdays()` | Constrain to Thursdays |
+| `.fridays()` | Constrain to Fridays |
+| `.saturdays()` | Constrain to Saturdays |
+| `.sundays()` | Constrain to Sundays |
+| `.weekly()` | Run every Sunday at 00:00 |
+| `.weeklyOn(1, '8:00')` | Run every week on Monday at 8:00 |
+| `.monthly()` | Run on the first day of every month at 00:00 |
+| `.monthlyOn(4, '15:00')` | Run every month on the 4th at 15:00 |
+| `.twiceMonthly(1, 16, '13:00')` | Run monthly on the 1st and 16th at 13:00 |
+| `.lastDayOfMonth('15:00')` | Run on the last day of the month at 15:00 |
+| `.quarterly()` | Run on the first day of every quarter at 00:00 |
+| `.quarterlyOn(4, '14:00')` | Run every quarter on the 4th at 14:00 |
+| `.yearly()` | Run on the first day of every year at 00:00 |
+| `.yearlyOn(6, 1, '17:00')` | Run every year on June 1st at 17:00 |
+| `.timezone('America/New_York')` | Set the timezone for the task |
